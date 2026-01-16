@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'balance_service.dart';
 import 'chart_service.dart';
 import 'price_service.dart';
+import 'favorites_service.dart';
 
 class WidgetService {
   static const String appGroupId = 'group.com.eugeniovaleiras.exchangeMonitor';
@@ -12,8 +13,9 @@ class WidgetService {
   final BalanceService _balanceService;
   final ChartService _chartService;
   final PriceService? _priceService;
+  final FavoritesService? _favoritesService;
 
-  WidgetService(this._balanceService, this._chartService, [this._priceService]);
+  WidgetService(this._balanceService, this._chartService, [this._priceService, this._favoritesService]);
 
   Future<void> updateWidget() async {
     try {
@@ -50,8 +52,9 @@ class WidgetService {
   }
 
   List<Map<String, dynamic>> _getMarketAssets() {
-    // Hardcoded favorite markets for now - will be configurable later
-    const favoriteSymbols = ['BTC', 'NEXO', 'MON'];
+    // Get first 3 favorites from FavoritesService, fallback to defaults
+    final favoriteSymbols = _favoritesService?.getTopFavorites(3) ??
+        (_favoritesService?.hasFavorites == true ? _favoritesService!.favorites.take(3).toList() : ['BTC', 'ETH', 'SOL']);
 
     return favoriteSymbols.map((symbol) {
       // Try to find the asset in balance service

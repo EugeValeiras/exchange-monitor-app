@@ -150,6 +150,31 @@ class ChartService extends ChangeNotifier {
     return filtered.isNotEmpty ? filtered.last : null;
   }
 
+  // Get the first filtered value (for 24h change calculation)
+  double? getFilteredFirstValue() {
+    if (_selectedAssets.isEmpty) return null;
+    final filtered = _getFilteredDataPoints();
+    return filtered.isNotEmpty ? filtered.first : null;
+  }
+
+  // Get the filtered 24h change in percentage
+  double? getFilteredChange24hPercent() {
+    if (_selectedAssets.isEmpty) return null;
+    final firstValue = getFilteredFirstValue();
+    final lastValue = getFilteredLastValue();
+    if (firstValue == null || lastValue == null || firstValue == 0) return null;
+    return ((lastValue - firstValue) / firstValue) * 100;
+  }
+
+  // Get the filtered 24h change in USD
+  double? getFilteredChange24hUsd() {
+    if (_selectedAssets.isEmpty) return null;
+    final firstValue = getFilteredFirstValue();
+    final lastValue = getFilteredLastValue();
+    if (firstValue == null || lastValue == null) return null;
+    return lastValue - firstValue;
+  }
+
   List<ChartPoint> getChartPoints() {
     final points = <ChartPoint>[];
     final dataLabels = labels;

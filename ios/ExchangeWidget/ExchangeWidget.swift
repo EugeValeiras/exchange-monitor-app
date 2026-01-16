@@ -424,7 +424,7 @@ struct AssetRowLarge: View {
                     .foregroundColor(.textSecondary)
                     .lineLimit(1)
             }
-            .frame(width: 70, alignment: .leading)
+            .frame(width: 90, alignment: .leading)
 
             Spacer()
 
@@ -482,9 +482,17 @@ struct ExchangeWidgetEntryView: View {
 
     var smallWidget: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("My Wealth")
-                .font(.system(size: 12))
-                .foregroundColor(.textSecondary)
+            HStack {
+                Text("My Wealth")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textSecondary)
+
+                Spacer()
+
+                Text(formatLastUpdated(entry.data.lastUpdated))
+                    .font(.system(size: 10))
+                    .foregroundColor(.textSecondary)
+            }
 
             Text(formatCurrency(entry.data.totalBalance))
                 .font(.system(size: 20, weight: .medium))
@@ -510,6 +518,14 @@ struct ExchangeWidgetEntryView: View {
 
     var mediumWidget: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // Last updated
+            HStack {
+                Spacer()
+                Text(formatLastUpdated(entry.data.lastUpdated))
+                    .font(.system(size: 10))
+                    .foregroundColor(.textSecondary)
+            }
+
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -553,21 +569,29 @@ struct ExchangeWidgetEntryView: View {
 
     var largeWidget: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // My Wealth label
-            Text("My Wealth")
-                .font(.system(size: 14))
-                .foregroundColor(.textSecondary)
+            // My Wealth label + Last updated
+            HStack {
+                Text("My Wealth")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textSecondary)
+
+                Spacer()
+
+                Text(formatLastUpdated(entry.data.lastUpdated))
+                    .font(.system(size: 10))
+                    .foregroundColor(.textSecondary)
+            }
 
             // Balance
             Text(formatCurrency(entry.data.totalBalance))
-                .font(.system(size: 26, weight: .medium))
+                .font(.system(size: 22, weight: .medium))
                 .foregroundColor(.textPrimary)
                 .padding(.bottom, 2)
 
             // 24h row
             HStack {
                 Text("24h")
-                    .font(.system(size: 14))
+                    .font(.system(size: 12))
                     .foregroundColor(.textSecondary)
 
                 Spacer()
@@ -576,20 +600,22 @@ struct ExchangeWidgetEntryView: View {
                     Image(systemName: entry.data.change24hPercent >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                         .font(.system(size: 8))
                     Text(String(format: "%.2f %%", abs(entry.data.change24hPercent)))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                     Text("•")
                         .foregroundColor(.textSecondary)
                     Text(formatCurrency(abs(entry.data.change24hUsd)))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(entry.data.change24hPercent >= 0 ? .positive : .negative)
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, 6)
 
             // Chart
             MainChart(data: entry.data.chartData)
-                .frame(height: 55)
-                .padding(.bottom, 10)
+                .frame(height: 45)
+
+            // Spacer pushes Markets Watchlist to bottom
+            Spacer()
 
             // Markets Watchlist
             Text("Markets Watchlist")
@@ -608,8 +634,7 @@ struct ExchangeWidgetEntryView: View {
                     }
                 }
             }
-
-            Spacer(minLength: 0)
+            .padding(.bottom, 3)
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -622,6 +647,17 @@ struct ExchangeWidgetEntryView: View {
         formatter.currencySymbol = "$ "
         formatter.maximumFractionDigits = value >= 1000 ? 0 : 2
         return formatter.string(from: NSNumber(value: value)) ?? "$ 0"
+    }
+
+    private func formatLastUpdated(_ isoString: String) -> String {
+        let isoFormatter = ISO8601DateFormatter()
+        guard let date = isoFormatter.date(from: isoString) else {
+            return ""
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
     }
 }
 

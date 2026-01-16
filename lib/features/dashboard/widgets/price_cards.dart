@@ -5,9 +5,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/balance_service.dart';
 import '../../../core/services/price_service.dart';
 import '../../../core/services/chart_service.dart';
+import '../../../core/services/favorites_service.dart';
 import '../../../shared/widgets/asset_logo.dart';
 import '../../../shared/widgets/change_badge.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
+import '../../../shared/widgets/favorite_button.dart';
 
 class PriceCardsWidget extends StatelessWidget {
   const PriceCardsWidget({super.key});
@@ -17,27 +19,69 @@ class PriceCardsWidget extends StatelessWidget {
     final balanceService = context.watch<BalanceService>();
     final priceService = context.watch<PriceService>();
     final chartService = context.watch<ChartService>();
+    final favoritesService = context.watch<FavoritesService>();
 
-    // Get top assets from balance
-    final topAssets = balanceService.topAssets;
+    // Get favorites
+    final favorites = favoritesService.favorites;
 
-    if (balanceService.isLoading && !balanceService.hasData) {
+    if (favoritesService.isLoading) {
       return const _PriceCardsSkeleton();
     }
 
-    if (topAssets.isEmpty) {
-      return const SizedBox.shrink();
+    if (favorites.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.star_border,
+              size: 48,
+              color: AppColors.textTertiary,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No hay favoritos',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Marca activos como favoritos desde Balances',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Clear filter button or connection indicator
+        // Header with title and connection indicator
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              const Text(
+                'Mercados Favoritos',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               if (chartService.hasAssetFilter)
                 GestureDetector(
                   onTap: () => chartService.clearAssetFilter(),
@@ -77,16 +121,17 @@ class PriceCardsWidget extends StatelessWidget {
             crossAxisSpacing: 12,
             childAspectRatio: 1.5,
           ),
-          itemCount: topAssets.length.clamp(0, 6),
+          itemCount: favorites.length.clamp(0, 6),
           itemBuilder: (context, index) {
-            final asset = topAssets[index];
-            final isSelected = chartService.isAssetSelected(asset.asset);
+            final assetSymbol = favorites[index];
+            final balanceAsset = balanceService.assets.where((a) => a.asset.toUpperCase() == assetSymbol).firstOrNull;
+            final isSelected = chartService.isAssetSelected(assetSymbol);
             return _PriceCard(
-              asset: asset.asset,
-              price: priceService.getPriceByAsset(asset.asset) ?? asset.priceUsd,
-              change24h: priceService.getChange24hByAsset(asset.asset) ?? asset.change24h,
+              asset: assetSymbol,
+              price: priceService.getPriceByAsset(assetSymbol) ?? balanceAsset?.priceUsd,
+              change24h: priceService.getChange24hByAsset(assetSymbol) ?? balanceAsset?.change24h,
               isSelected: isSelected,
-              onTap: () => chartService.toggleAsset(asset.asset),
+              onTap: () => chartService.toggleAsset(assetSymbol),
             );
           },
         ),
@@ -121,7 +166,6 @@ class _PriceCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.brandAccent.withValues(alpha: 0.15)
@@ -132,38 +176,52 @@ class _PriceCard extends StatelessWidget {
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Stack(
           children: [
-            // Header with logo and name
-            Row(
-              children: [
-                AssetLogo(asset: asset, size: 28),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    asset,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: isSelected ? AppColors.brandAccent : null,
-                    ),
+            // Main content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Header with logo and name
+                  Row(
+                    children: [
+                      AssetLogo(asset: asset, size: 28),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          asset,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: isSelected ? AppColors.brandAccent : null,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Price
+                  Text(
+                    price != null ? currencyFormat.format(price) : '--',
+                    style: AppTextStyles.monoMedium,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
 
-            // Price
-            Text(
-              price != null ? currencyFormat.format(price) : '--',
-              style: AppTextStyles.monoMedium,
-              overflow: TextOverflow.ellipsis,
+                  // Change
+                  ChangeBadge(change: change24h, compact: true),
+                ],
+              ),
             ),
-
-            // Change
-            ChangeBadge(change: change24h, compact: true),
+            // Favorite button - top right
+            Positioned(
+              top: 8,
+              right: 8,
+              child: FavoriteButton(asset: asset, size: 20),
+            ),
           ],
         ),
       ),

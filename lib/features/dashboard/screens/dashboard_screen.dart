@@ -5,6 +5,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/balance_service.dart';
 import '../../../core/services/chart_service.dart';
 import '../../../core/services/price_service.dart';
+import '../../../core/services/favorites_service.dart';
 import '../../../core/services/widget_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/balance_chart.dart';
@@ -54,7 +55,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final balanceService = context.read<BalanceService>();
       final chartService = context.read<ChartService>();
       final priceService = context.read<PriceService>();
-      final widgetService = WidgetService(balanceService, chartService, priceService);
+      final favoritesService = context.read<FavoritesService>();
+      final widgetService = WidgetService(balanceService, chartService, priceService, favoritesService);
       widgetService.updateWidget();
     }
   }
@@ -67,6 +69,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Get filtered value and label if there's an asset filter
     final hasFilter = chartService.hasAssetFilter;
     final filteredValue = hasFilter ? chartService.getFilteredLastValue() : null;
+    final filteredChangePercent = hasFilter ? chartService.getFilteredChange24hPercent() : null;
+    final filteredChangeUsd = hasFilter ? chartService.getFilteredChange24hUsd() : null;
     final filterLabel = hasFilter
         ? chartService.selectedAssets.join(' + ')
         : null;
@@ -114,6 +118,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 overrideValue: _chartTouchValue ?? filteredValue,
                 overrideDate: _chartTouchDate,
                 filterLabel: _chartTouchValue == null ? filterLabel : null,
+                filteredChangePercent: _chartTouchValue == null ? filteredChangePercent : null,
+                filteredChangeUsd: _chartTouchValue == null ? filteredChangeUsd : null,
               ),
               const SizedBox(height: 24),
 

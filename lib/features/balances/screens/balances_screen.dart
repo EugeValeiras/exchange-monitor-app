@@ -10,6 +10,7 @@ import '../../../shared/widgets/asset_logo.dart';
 import '../../../shared/widgets/change_badge.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/favorite_button.dart';
 
 class BalancesScreen extends StatefulWidget {
   const BalancesScreen({super.key});
@@ -361,6 +362,9 @@ class _AssetBalanceCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
+                // Favorite button
+                FavoriteButton(asset: asset.asset, size: 22),
+                const SizedBox(width: 10),
                 // Logo
                 AssetLogo(asset: asset.asset, size: 48),
                 const SizedBox(width: 14),

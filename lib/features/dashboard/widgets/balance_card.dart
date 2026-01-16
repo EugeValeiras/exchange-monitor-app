@@ -12,6 +12,8 @@ class BalanceCard extends StatelessWidget {
   final double? overrideValue;
   final DateTime? overrideDate;
   final String? filterLabel;
+  final double? filteredChangePercent;
+  final double? filteredChangeUsd;
 
   const BalanceCard({
     super.key,
@@ -20,6 +22,8 @@ class BalanceCard extends StatelessWidget {
     this.overrideValue,
     this.overrideDate,
     this.filterLabel,
+    this.filteredChangePercent,
+    this.filteredChangeUsd,
   });
 
   @override
@@ -110,7 +114,7 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Show 24h change only when not showing override or filter
+          // Show 24h change - use filtered values when filtering, otherwise service values
           if (hideSmallBalances == true)
             const Text(
               '••••••',
@@ -119,13 +123,20 @@ class BalanceCard extends StatelessWidget {
                 fontSize: 16,
               ),
             )
-          else if (!isShowingOverride && !isShowingFilter &&
-              (balanceService.change24h != null ||
-                  balanceService.changeUsd24h != null))
-            PriceChange(
-              changeUsd: balanceService.changeUsd24h,
-              changePercent: balanceService.change24h,
-            ),
+          else if (!isShowingOverride) ...[
+            if (isShowingFilter && (filteredChangePercent != null || filteredChangeUsd != null))
+              PriceChange(
+                changeUsd: filteredChangeUsd,
+                changePercent: filteredChangePercent,
+              )
+            else if (!isShowingFilter &&
+                (balanceService.change24h != null ||
+                    balanceService.changeUsd24h != null))
+              PriceChange(
+                changeUsd: balanceService.changeUsd24h,
+                changePercent: balanceService.change24h,
+              ),
+          ],
         ],
       ),
     );

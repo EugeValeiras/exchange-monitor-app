@@ -8,6 +8,7 @@ import 'core/services/balance_service.dart';
 import 'core/services/chart_service.dart';
 import 'core/services/price_service.dart';
 import 'core/services/transaction_service.dart';
+import 'core/services/favorites_service.dart';
 import 'core/services/widget_service.dart';
 
 Future<void> mainCommon() async {
@@ -57,6 +58,9 @@ Future<void> mainCommon() async {
         ),
         ChangeNotifierProvider<TransactionService>(
           create: (_) => TransactionService(apiService),
+        ),
+        ChangeNotifierProvider<FavoritesService>(
+          create: (_) => FavoritesService(apiService),
         ),
       ],
       child: const ExchangeMonitorApp(),

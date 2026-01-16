@@ -6,6 +6,7 @@ import 'core/services/price_service.dart';
 import 'core/services/balance_service.dart';
 import 'core/services/chart_service.dart';
 import 'core/services/transaction_service.dart';
+import 'core/services/favorites_service.dart';
 import 'core/services/widget_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
@@ -53,8 +54,9 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBin
     final balanceService = context.read<BalanceService>();
     final chartService = context.read<ChartService>();
     final priceService = context.read<PriceService>();
+    final favoritesService = context.read<FavoritesService>();
 
-    final widgetService = WidgetService(balanceService, chartService, priceService);
+    final widgetService = WidgetService(balanceService, chartService, priceService, favoritesService);
     widgetService.updateWidget();
   }
 
@@ -77,16 +79,18 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBin
       // Load initial data
       final balanceService = context.read<BalanceService>();
       final chartService = context.read<ChartService>();
+      final favoritesService = context.read<FavoritesService>();
 
       await Future.wait([
         balanceService.loadBalance(),
         chartService.loadChartData(),
+        favoritesService.loadFavorites(),
       ]);
 
       context.read<TransactionService>().refresh();
 
       // Update iOS widget with latest data
-      final widgetService = WidgetService(balanceService, chartService, priceService);
+      final widgetService = WidgetService(balanceService, chartService, priceService, favoritesService);
       widgetService.updateWidget();
     }
   }
