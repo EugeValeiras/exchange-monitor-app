@@ -1,0 +1,5 @@
+// Development flavor configuration
+PRODUCT_BUNDLE_IDENTIFIER=com.eugeniovaleiras.exchangeMonitor.dev
+PRODUCT_NAME=Exchange DEV
+FLUTTER_TARGET=lib/main_dev.dart
+ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon-Dev

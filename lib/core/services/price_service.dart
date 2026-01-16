@@ -1,0 +1,217 @@
+import 'package:flutter/foundation.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../config/app_config.dart';
+import '../models/price.dart';
+
+class PriceService extends ChangeNotifier {
+  io.Socket? _socket;
+  final Map<String, PriceUpdate> _prices = {};
+  bool _isConnected = false;
+  bool _isConnecting = false;
+  String? _authToken;
+  final Set<String> _subscribedSymbols = {};
+
+  // Exchange connection status
+  bool _binanceConnected = false;
+  bool _krakenConnected = false;
+
+  bool get isConnected => _isConnected;
+  bool get isConnecting => _isConnecting;
+  Map<String, PriceUpdate> get prices => Map.unmodifiable(_prices);
+  List<PriceUpdate> get priceList => _prices.values.toList();
+  bool get binanceConnected => _binanceConnected;
+  bool get krakenConnected => _krakenConnected;
+
+  void setAuthToken(String? token) {
+    _authToken = token;
+  }
+
+  void connect() {
+    if (_isConnected || _isConnecting || _authToken == null) return;
+
+    _isConnecting = true;
+    notifyListeners();
+
+    final config = AppConfig.instance;
+
+    // Connect to the /prices namespace (namespace is appended to URL, not set via path)
+    _socket = io.io(
+      '${config.wsBaseUrl}/prices',
+      io.OptionBuilder()
+          .setTransports(['websocket', 'polling'])
+          .setAuth({'token': _authToken})
+          .enableAutoConnect()
+          .enableReconnection()
+          .setReconnectionDelay(1000)
+          .setReconnectionAttempts(10)
+          .build(),
+    );
+
+    _socket!.onConnect((_) {
+      if (kDebugMode) {
+        print('Price socket connected');
+      }
+      _isConnected = true;
+      _isConnecting = false;
+      notifyListeners();
+
+      // Re-subscribe to symbols
+      if (_subscribedSymbols.isNotEmpty) {
+        subscribe(_subscribedSymbols.toList());
+      }
+    });
+
+    _socket!.onDisconnect((_) {
+      if (kDebugMode) {
+        print('Price socket disconnected');
+      }
+      _isConnected = false;
+      notifyListeners();
+    });
+
+    _socket!.onConnectError((error) {
+      if (kDebugMode) {
+        print('Price socket connection error: $error');
+      }
+      _isConnecting = false;
+      _isConnected = false;
+      notifyListeners();
+    });
+
+    _socket!.on('prices:initial', (data) {
+      if (data is List) {
+        for (final item in data) {
+          if (item is Map<String, dynamic>) {
+            final price = PriceUpdate.fromJson(item);
+            _prices[price.symbol] = price;
+          }
+        }
+        notifyListeners();
+      }
+    });
+
+    _socket!.on('price:update', (data) {
+      if (data is Map<String, dynamic>) {
+        final price = PriceUpdate.fromJson(data);
+        _prices[price.symbol] = price;
+        notifyListeners();
+      }
+    });
+
+    _socket!.on('price:tick', (data) {
+      if (data is Map<String, dynamic>) {
+        final symbol = data['symbol'] as String?;
+        final price = (data['price'] as num?)?.toDouble();
+        if (symbol != null && price != null) {
+          final existing = _prices[symbol];
+          if (existing != null) {
+            _prices[symbol] = PriceUpdate(
+              symbol: symbol,
+              price: price,
+              change24h: existing.change24h,
+              high24h: existing.high24h,
+              low24h: existing.low24h,
+              source: existing.source,
+              timestamp: DateTime.now(),
+              prices: existing.prices,
+            );
+            notifyListeners();
+          }
+        }
+      }
+    });
+
+    _socket!.on('connection:status', (data) {
+      if (data is Map<String, dynamic>) {
+        _binanceConnected = data['binance'] == true;
+        _krakenConnected = data['kraken'] == true;
+        notifyListeners();
+      }
+    });
+
+    _socket!.connect();
+  }
+
+  void disconnect() {
+    _socket?.disconnect();
+    _socket?.dispose();
+    _socket = null;
+    _isConnected = false;
+    _isConnecting = false;
+    _subscribedSymbols.clear();
+    notifyListeners();
+  }
+
+  void subscribe(List<String> symbols) {
+    _subscribedSymbols.addAll(symbols);
+    if (_isConnected) {
+      _socket?.emit('subscribe', symbols);
+    }
+  }
+
+  void unsubscribe(List<String> symbols) {
+    _subscribedSymbols.removeAll(symbols);
+    if (_isConnected) {
+      _socket?.emit('unsubscribe', symbols);
+    }
+  }
+
+  PriceUpdate? getPrice(String symbol) {
+    return _prices[symbol];
+  }
+
+  double? getPriceByAsset(String asset) {
+    // Try common pairs
+    final pairs = [
+      '$asset/USDT',
+      '$asset/USD',
+      '$asset/BUSD',
+    ];
+
+    for (final pair in pairs) {
+      final price = _prices[pair];
+      if (price != null) {
+        return price.price;
+      }
+    }
+
+    // Check all prices for matching asset
+    for (final price in _prices.values) {
+      if (price.asset == asset) {
+        return price.price;
+      }
+    }
+
+    return null;
+  }
+
+  double? getChange24hByAsset(String asset) {
+    final pairs = ['$asset/USDT', '$asset/USD'];
+    for (final pair in pairs) {
+      final price = _prices[pair];
+      if (price != null) {
+        return price.change24h;
+      }
+    }
+    return null;
+  }
+
+  List<PriceUpdate> getFilteredPrices({
+    String? exchange,
+    String? asset,
+    String? quote,
+  }) {
+    return priceList.where((p) {
+      if (exchange != null && p.source != exchange) return false;
+      if (asset != null && p.asset != asset) return false;
+      if (quote != null && p.quote != quote) return false;
+      return true;
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    disconnect();
+    super.dispose();
+  }
+}

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#0B0E11"/>
+
+  <defs>
+    <linearGradient id="emAccent" x1="160" y1="864" x2="864" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00C2FF" stop-opacity="0.90"/>
+      <stop offset="1" stop-color="#00C2FF" stop-opacity="1"/>
+    </linearGradient>
+    <filter id="emGlow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 .35 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded rect border -->
+  <rect x="96" y="96" width="832" height="832" rx="180" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="32"/>
+
+  <!-- Grid lines -->
+  <path d="M288 704H736" stroke="rgba(255,255,255,.14)" stroke-width="32" stroke-linecap="round"/>
+  <path d="M288 512H672" stroke="rgba(255,255,255,.10)" stroke-width="32" stroke-linecap="round"/>
+
+  <!-- Chart line with glow -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#emGlow)">
+    <path d="M288 640 L448 480 L576 544 L736 352" stroke="url(#emAccent)" stroke-width="64"/>
+    <circle cx="288" cy="640" r="51" fill="#00C2FF"/>
+    <circle cx="448" cy="480" r="51" fill="#00C2FF"/>
+    <circle cx="576" cy="544" r="51" fill="#00C2FF" opacity="0.9"/>
+    <circle cx="736" cy="352" r="51" fill="#00C2FF"/>
+  </g>
+</svg>

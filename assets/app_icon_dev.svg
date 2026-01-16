@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2196F3"/>
+      <stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="180" fill="url(#bgGrad)"/>
+
+  <!-- Grid lines -->
+  <g stroke="rgba(255,255,255,0.12)" stroke-width="2">
+    <!-- Vertical lines -->
+    <line x1="128" y1="0" x2="128" y2="1024"/>
+    <line x1="256" y1="0" x2="256" y2="1024"/>
+    <line x1="384" y1="0" x2="384" y2="1024"/>
+    <line x1="512" y1="0" x2="512" y2="1024"/>
+    <line x1="640" y1="0" x2="640" y2="1024"/>
+    <line x1="768" y1="0" x2="768" y2="1024"/>
+    <line x1="896" y1="0" x2="896" y2="1024"/>
+    <!-- Horizontal lines -->
+    <line x1="0" y1="128" x2="1024" y2="128"/>
+    <line x1="0" y1="256" x2="1024" y2="256"/>
+    <line x1="0" y1="384" x2="1024" y2="384"/>
+    <line x1="0" y1="512" x2="1024" y2="512"/>
+    <line x1="0" y1="640" x2="1024" y2="640"/>
+    <line x1="0" y1="768" x2="1024" y2="768"/>
+    <line x1="0" y1="896" x2="1024" y2="896"/>
+  </g>
+
+  <!-- Rounded rect border -->
+  <rect x="220" y="280" width="584" height="464" rx="80" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="8"/>
+
+  <!-- Horizontal lines inside box -->
+  <line x1="300" y1="620" x2="724" y2="620" stroke="rgba(255,255,255,0.15)" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Chart line -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M300 580 L420 480 L540 520 L724 360" stroke="white" stroke-width="40"/>
+    <circle cx="300" cy="580" r="32" fill="white"/>
+    <circle cx="420" cy="480" r="32" fill="white"/>
+    <circle cx="540" cy="520" r="32" fill="white"/>
+    <circle cx="724" cy="360" r="32" fill="white"/>
+  </g>
+</svg>
