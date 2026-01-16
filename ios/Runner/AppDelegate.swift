@@ -2,6 +2,8 @@ import Flutter
 import UIKit
 import BackgroundTasks
 import WidgetKit
+import FirebaseCore
+import FirebaseMessaging
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -12,7 +14,14 @@ import WidgetKit
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        // Configure Firebase
+        FirebaseApp.configure()
+
         GeneratedPluginRegistrant.register(with: self)
+
+        // Register for remote notifications
+        UNUserNotificationCenter.current().delegate = self
+        application.registerForRemoteNotifications()
 
         // Register background task
         BGTaskScheduler.shared.register(forTaskWithIdentifier: backgroundTaskId, using: nil) { task in
@@ -23,6 +32,12 @@ import WidgetKit
         application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
 
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+
+    // Handle APNs token registration
+    override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+        super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     }
 
     // Handle legacy background fetch

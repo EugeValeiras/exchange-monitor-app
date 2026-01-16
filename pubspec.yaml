@@ -2,7 +2,7 @@ name: exchange_monitor
 description: "Exchange Monitor - Track your crypto portfolio"
 publish_to: 'none'
 
-version: 1.0.0+13
+version: 1.0.0+18
 
 environment:
   sdk: ^3.5.4
@@ -40,6 +40,10 @@ dependencies:
   # iOS Widget
   home_widget: ^0.7.0
 
+  # Firebase
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -61,6 +65,9 @@ flutter_native_splash:
   image: assets/splash/logo.png
   color_dark: "#0B0E11"
   image_dark: assets/splash/logo.png
+
+  # iOS - center the image at its natural size (no scaling)
+  ios_content_mode: center
 
   android_12:
     color: "#0B0E11"

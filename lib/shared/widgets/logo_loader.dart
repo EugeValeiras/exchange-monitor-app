@@ -45,7 +45,7 @@ class _LogoLoaderState extends State<LogoLoader> with TickerProviderStateMixin {
       _floatController.repeat(reverse: true);
     }
 
-    // Line drawing animation
+    // Line drawing animation (repeating)
     _lineController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -53,6 +53,16 @@ class _LogoLoaderState extends State<LogoLoader> with TickerProviderStateMixin {
     _lineAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _lineController, curve: Curves.easeOut),
     );
+    _lineController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _lineController.reset();
+            _lineController.forward();
+          }
+        });
+      }
+    });
     _lineController.forward();
 
     // Pulse animation for glow effect

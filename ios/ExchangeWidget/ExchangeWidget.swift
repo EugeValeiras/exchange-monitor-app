@@ -254,6 +254,7 @@ struct SparklineChart: View {
 
 struct MainChart: View {
     let data: [Double]
+    let isPositive: Bool
 
     var body: some View {
         GeometryReader { geometry in
@@ -295,8 +296,8 @@ struct MainChart: View {
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.brandAccent.opacity(0.4),
-                            Color.brandAccent.opacity(0.0)
+                            (isPositive ? Color.positive : Color.negative).opacity(0.4),
+                            (isPositive ? Color.positive : Color.negative).opacity(0.0)
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -317,7 +318,7 @@ struct MainChart: View {
                         }
                     }
                 }
-                .stroke(Color.brandAccent, lineWidth: 2)
+                .stroke(isPositive ? Color.positive : Color.negative, lineWidth: 2)
             }
         }
     }
@@ -424,7 +425,7 @@ struct AssetRowLarge: View {
                     .foregroundColor(.textSecondary)
                     .lineLimit(1)
             }
-            .frame(width: 90, alignment: .leading)
+            .frame(width: 70, alignment: .leading)
 
             Spacer()
 
@@ -508,7 +509,7 @@ struct ExchangeWidgetEntryView: View {
 
             Spacer()
 
-            MainChart(data: entry.data.chartData)
+            MainChart(data: entry.data.chartData, isPositive: entry.data.change24hPercent >= 0)
                 .frame(height: 40)
         }
         .padding(12)
@@ -559,7 +560,7 @@ struct ExchangeWidgetEntryView: View {
             }
 
             // Chart
-            MainChart(data: entry.data.chartData)
+            MainChart(data: entry.data.chartData, isPositive: entry.data.change24hPercent >= 0)
                 .frame(height: 50)
         }
         .padding(14)
@@ -586,6 +587,7 @@ struct ExchangeWidgetEntryView: View {
             Text(formatCurrency(entry.data.totalBalance))
                 .font(.system(size: 22, weight: .medium))
                 .foregroundColor(.textPrimary)
+                .padding(.top, 1)
                 .padding(.bottom, 2)
 
             // 24h row
@@ -598,20 +600,20 @@ struct ExchangeWidgetEntryView: View {
 
                 HStack(spacing: 4) {
                     Image(systemName: entry.data.change24hPercent >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                        .font(.system(size: 8))
+                        .font(.system(size: 9))
                     Text(String(format: "%.2f %%", abs(entry.data.change24hPercent)))
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                     Text("•")
                         .foregroundColor(.textSecondary)
                     Text(formatCurrency(abs(entry.data.change24hUsd)))
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                 }
                 .foregroundColor(entry.data.change24hPercent >= 0 ? .positive : .negative)
             }
             .padding(.bottom, 6)
 
             // Chart
-            MainChart(data: entry.data.chartData)
+            MainChart(data: entry.data.chartData, isPositive: entry.data.change24hPercent >= 0)
                 .frame(height: 45)
 
             // Spacer pushes Markets Watchlist to bottom
@@ -634,7 +636,7 @@ struct ExchangeWidgetEntryView: View {
                     }
                 }
             }
-            .padding(.bottom, 3)
+            .padding(.bottom, 4)
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

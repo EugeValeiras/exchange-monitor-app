@@ -10,6 +10,7 @@ import 'core/services/price_service.dart';
 import 'core/services/transaction_service.dart';
 import 'core/services/favorites_service.dart';
 import 'core/services/widget_service.dart';
+import 'core/services/notification_service.dart';
 
 Future<void> mainCommon() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +37,10 @@ Future<void> mainCommon() async {
   // Create services
   final apiService = ApiService();
 
+  // Initialize notification service
+  final notificationService = NotificationService(apiService);
+  await notificationService.initialize();
+
   runApp(
     MultiProvider(
       providers: [
@@ -61,6 +66,9 @@ Future<void> mainCommon() async {
         ),
         ChangeNotifierProvider<FavoritesService>(
           create: (_) => FavoritesService(apiService),
+        ),
+        ChangeNotifierProvider<NotificationService>.value(
+          value: notificationService,
         ),
       ],
       child: const ExchangeMonitorApp(),

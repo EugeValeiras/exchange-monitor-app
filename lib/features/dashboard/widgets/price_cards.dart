@@ -9,7 +9,6 @@ import '../../../core/services/favorites_service.dart';
 import '../../../shared/widgets/asset_logo.dart';
 import '../../../shared/widgets/change_badge.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
-import '../../../shared/widgets/favorite_button.dart';
 
 class PriceCardsWidget extends StatelessWidget {
   const PriceCardsWidget({super.key});
@@ -166,6 +165,7 @@ class _PriceCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.brandAccent.withValues(alpha: 0.15)
@@ -176,52 +176,38 @@ class _PriceCard extends StatelessWidget {
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Main content
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Header with logo and name
-                  Row(
-                    children: [
-                      AssetLogo(asset: asset, size: 28),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          asset,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: isSelected ? AppColors.brandAccent : null,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Price
-                  Text(
-                    price != null ? currencyFormat.format(price) : '--',
-                    style: AppTextStyles.monoMedium,
+            // Header with logo and name
+            Row(
+              children: [
+                AssetLogo(asset: asset, size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    asset,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: isSelected ? AppColors.brandAccent : null,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
+                ),
+              ],
+            ),
 
-                  // Change
-                  ChangeBadge(change: change24h, compact: true),
-                ],
-              ),
+            // Price
+            Text(
+              price != null ? currencyFormat.format(price) : '--',
+              style: AppTextStyles.monoMedium,
+              overflow: TextOverflow.ellipsis,
             ),
-            // Favorite button - top right
-            Positioned(
-              top: 8,
-              right: 8,
-              child: FavoriteButton(asset: asset, size: 20),
-            ),
+
+            // Change
+            ChangeBadge(change: change24h, compact: true),
           ],
         ),
       ),

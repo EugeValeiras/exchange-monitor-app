@@ -1,13 +1,13 @@
 /// Utility functions for formatting data
 
 /// Formats exchange name for display
-/// e.g., "binance" -> "Binance", "nexo-manual" -> "Nexo Manual", "kraken" -> "Kraken"
+/// e.g., "binance" -> "Binance", "nexo-manual" -> "Nexo", "kraken" -> "Kraken"
 String formatExchangeName(String exchange) {
   final normalized = exchange.toLowerCase();
 
   // Handle special cases
   if (normalized == 'nexo-manual') {
-    return 'Nexo Manual';
+    return 'Nexo';
   }
   if (normalized == 'nexo-pro') {
     return 'Nexo Pro';
