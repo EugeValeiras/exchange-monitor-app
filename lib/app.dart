@@ -6,8 +6,10 @@ import 'core/services/price_service.dart';
 import 'core/services/balance_service.dart';
 import 'core/services/chart_service.dart';
 import 'core/services/transaction_service.dart';
+import 'core/services/widget_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
+import 'shared/widgets/logo_loader.dart';
 
 class ExchangeMonitorApp extends StatefulWidget {
   const ExchangeMonitorApp({super.key});
@@ -42,9 +44,19 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> {
       priceService.connect();
 
       // Load initial data
-      context.read<BalanceService>().loadBalance();
-      context.read<ChartService>().loadChartData();
+      final balanceService = context.read<BalanceService>();
+      final chartService = context.read<ChartService>();
+
+      await Future.wait([
+        balanceService.loadBalance(),
+        chartService.loadChartData(),
+      ]);
+
       context.read<TransactionService>().refresh();
+
+      // Update iOS widget with latest data
+      final widgetService = WidgetService(balanceService, chartService);
+      widgetService.updateWidget();
     }
   }
 
@@ -61,8 +73,10 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> {
             return const Scaffold(
               backgroundColor: AppColors.bgPrimary,
               body: Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.brandAccent,
+                child: LogoLoader(
+                  size: 120,
+                  showText: true,
+                  text: 'Cargando...',
                 ),
               ),
             );

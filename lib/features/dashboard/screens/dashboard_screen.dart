@@ -5,6 +5,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/balance_service.dart';
 import '../../../core/services/chart_service.dart';
 import '../../../core/services/price_service.dart';
+import '../../../core/services/widget_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/balance_chart.dart';
 import '../widgets/price_cards.dart';
@@ -18,6 +19,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _hideSmallBalances = false;
+  double? _chartTouchValue;
+  DateTime? _chartTouchDate;
 
   @override
   void initState() {
@@ -45,11 +48,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _handleRefresh() async {
     await _loadData();
+
+    // Update iOS widget
+    if (mounted) {
+      final balanceService = context.read<BalanceService>();
+      final chartService = context.read<ChartService>();
+      final widgetService = WidgetService(balanceService, chartService);
+      widgetService.updateWidget();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final authService = context.watch<AuthService>();
+    final chartService = context.watch<ChartService>();
+
+    // Get filtered value and label if there's an asset filter
+    final hasFilter = chartService.hasAssetFilter;
+    final filteredValue = hasFilter ? chartService.getFilteredLastValue() : null;
+    final filterLabel = hasFilter
+        ? chartService.selectedAssets.join(' + ')
+        : null;
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -91,11 +110,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               BalanceCard(
                 hideSmallBalances: _hideSmallBalances,
                 onToggleSmallBalances: () => setState(() => _hideSmallBalances = !_hideSmallBalances),
+                overrideValue: _chartTouchValue ?? filteredValue,
+                overrideDate: _chartTouchDate,
+                filterLabel: _chartTouchValue == null ? filterLabel : null,
               ),
               const SizedBox(height: 24),
 
               // Chart
-              const BalanceChartWidget(),
+              BalanceChartWidget(
+                onTouchValue: (value, date) {
+                  setState(() {
+                    _chartTouchValue = value;
+                    _chartTouchDate = date;
+                  });
+                },
+              ),
               const SizedBox(height: 24),
 
               // Price Cards

@@ -8,9 +8,13 @@ import 'core/services/balance_service.dart';
 import 'core/services/chart_service.dart';
 import 'core/services/price_service.dart';
 import 'core/services/transaction_service.dart';
+import 'core/services/widget_service.dart';
 
 Future<void> mainCommon() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize widget service
+  await WidgetService.initialize();
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -38,14 +42,18 @@ Future<void> mainCommon() async {
         ChangeNotifierProvider<AuthService>(
           create: (_) => AuthService(apiService),
         ),
-        ChangeNotifierProvider<BalanceService>(
+        ChangeNotifierProvider<PriceService>(
+          create: (_) => PriceService(),
+        ),
+        ChangeNotifierProxyProvider<PriceService, BalanceService>(
           create: (_) => BalanceService(apiService),
+          update: (_, priceService, balanceService) {
+            balanceService!.setPriceService(priceService);
+            return balanceService;
+          },
         ),
         ChangeNotifierProvider<ChartService>(
           create: (_) => ChartService(apiService),
-        ),
-        ChangeNotifierProvider<PriceService>(
-          create: (_) => PriceService(),
         ),
         ChangeNotifierProvider<TransactionService>(
           create: (_) => TransactionService(apiService),

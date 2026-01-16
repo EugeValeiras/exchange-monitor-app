@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/api_service.dart';
+import '../../../shared/widgets/logo_loader.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -59,25 +60,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo/Icon
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.brandPrimary,
-                          AppColors.brandPrimaryDark,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.currency_exchange,
-                      size: 40,
-                      color: AppColors.brandAccent,
-                    ),
+                  const LogoLoader(
+                    size: 120,
+                    showText: false,
+                    float: false,
                   ),
                   const SizedBox(height: 32),
 

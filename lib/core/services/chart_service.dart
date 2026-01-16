@@ -10,6 +10,7 @@ class ChartService extends ChangeNotifier {
   ChartTimeframe _selectedTimeframe = ChartTimeframe.h24;
   bool _isLoading = false;
   String? _error;
+  Set<String> _selectedAssets = {};
 
   ChartService(this._apiService);
 
@@ -19,11 +20,45 @@ class ChartService extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasData => _chartData != null || _chartDataByAsset != null;
+  Set<String> get selectedAssets => _selectedAssets;
+  bool get hasAssetFilter => _selectedAssets.isNotEmpty;
 
   double get changeUsd => _chartData?.changeUsd ?? _chartDataByAsset?.changeUsd ?? 0;
   double get changePercent => _chartData?.changePercent ?? _chartDataByAsset?.changePercent ?? 0;
 
-  List<double> get dataPoints => _chartDataByAsset?.totalData ?? _chartData?.data ?? [];
+  List<double> get dataPoints {
+    // If we have filtered assets and asset data, calculate the sum of selected assets
+    if (_selectedAssets.isNotEmpty && _chartDataByAsset != null) {
+      return _getFilteredDataPoints();
+    }
+    return _chartDataByAsset?.totalData ?? _chartData?.data ?? [];
+  }
+
+  List<double> _getFilteredDataPoints() {
+    final assetData = _chartDataByAsset?.assetData ?? [];
+    if (assetData.isEmpty) return _chartDataByAsset?.totalData ?? [];
+
+    // Filter only selected assets (case-insensitive)
+    final selectedLower = _selectedAssets.map((a) => a.toLowerCase()).toSet();
+    final selectedAssetData = assetData
+        .where((ad) => selectedLower.contains(ad.asset.toLowerCase()))
+        .toList();
+
+    if (selectedAssetData.isEmpty) return _chartDataByAsset?.totalData ?? [];
+
+    // Sum up values for each timestamp
+    final numPoints = selectedAssetData.first.data.length;
+    final result = List<double>.filled(numPoints, 0);
+
+    for (final ad in selectedAssetData) {
+      for (var i = 0; i < ad.data.length && i < numPoints; i++) {
+        result[i] += ad.data[i];
+      }
+    }
+
+    return result;
+  }
+
   List<String> get labels => _chartDataByAsset?.labels ?? _chartData?.labels ?? [];
 
   Future<void> loadChartData({
@@ -87,7 +122,33 @@ class ChartService extends ChangeNotifier {
     }
   }
 
+  void toggleAsset(String asset) {
+    if (_selectedAssets.contains(asset)) {
+      _selectedAssets.remove(asset);
+    } else {
+      _selectedAssets.add(asset);
+    }
+    // Just notify - filtering is done client-side in dataPoints getter
+    notifyListeners();
+  }
+
+  void clearAssetFilter() {
+    if (_selectedAssets.isNotEmpty) {
+      _selectedAssets.clear();
+      notifyListeners();
+    }
+  }
+
+  bool isAssetSelected(String asset) => _selectedAssets.contains(asset);
+
   List<String> get availableAssets => _chartDataByAsset?.availableAssets ?? [];
+
+  // Get the last filtered value (for the "current" point on chart)
+  double? getFilteredLastValue() {
+    if (_selectedAssets.isEmpty) return null;
+    final filtered = _getFilteredDataPoints();
+    return filtered.isNotEmpty ? filtered.last : null;
+  }
 
   List<ChartPoint> getChartPoints() {
     final points = <ChartPoint>[];

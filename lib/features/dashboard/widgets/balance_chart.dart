@@ -4,59 +4,50 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/chart_service.dart';
+import '../../../core/services/balance_service.dart';
 import '../../../core/models/chart_data.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
 
 class BalanceChartWidget extends StatelessWidget {
-  const BalanceChartWidget({super.key});
+  final void Function(double? value, DateTime? date)? onTouchValue;
+
+  const BalanceChartWidget({
+    super.key,
+    this.onTouchValue,
+  });
 
   @override
   Widget build(BuildContext context) {
     final chartService = context.watch<ChartService>();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with timeframe toggles
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Balance History',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                _TimeframeToggle(
-                  selected: chartService.selectedTimeframe,
-                  onChanged: (tf) => chartService.setTimeframe(tf),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Chart
-            SizedBox(
-              height: 200,
-              child: chartService.isLoading
-                  ? const _ChartSkeleton()
-                  : chartService.hasData
-                      ? _buildChart(context, chartService)
-                      : const Center(
-                          child: Text(
-                            'No hay datos para este periodo',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                        ),
-            ),
-          ],
+    return Column(
+      children: [
+        // Chart
+        SizedBox(
+          height: 250,
+          child: chartService.isLoading
+              ? const _ChartSkeleton()
+              : chartService.hasData
+                  ? _buildChart(context, chartService)
+                  : const Center(
+                      child: Text(
+                        'No hay datos para este periodo',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
         ),
-      ),
+        const SizedBox(height: 16),
+        // Timeframe toggles below chart
+        _TimeframeToggle(
+          selected: chartService.selectedTimeframe,
+          onChanged: (tf) => chartService.setTimeframe(tf),
+        ),
+      ],
     );
   }
 
   Widget _buildChart(BuildContext context, ChartService chartService) {
+    final balanceService = context.watch<BalanceService>();
     final points = chartService.getChartPoints();
     if (points.isEmpty) {
       return const Center(
@@ -67,81 +58,32 @@ class BalanceChartWidget extends StatelessWidget {
       );
     }
 
-    final isPositive = chartService.changePercent >= 0;
-    final lineColor = isPositive ? AppColors.success : AppColors.error;
+    // Create list of timestamps including current balance as last point
+    final timestamps = points.map((p) => p.timestamp).toList();
+    timestamps.add(DateTime.now());
 
     final spots = <FlSpot>[];
     for (var i = 0; i < points.length; i++) {
       spots.add(FlSpot(i.toDouble(), points[i].value));
     }
+    // Add current value as the last point (filtered if there's a filter)
+    final lastValue = chartService.hasAssetFilter
+        ? (chartService.getFilteredLastValue() ?? points.last.value)
+        : balanceService.totalValueUsd;
+    spots.add(FlSpot(points.length.toDouble(), lastValue));
 
     final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
     final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
-    final padding = (maxY - minY) * 0.1;
+    final padding = (maxY - minY) * 0.15;
 
     return LineChart(
       LineChartData(
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: (maxY - minY) / 4,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: AppColors.border.withOpacity(0.5),
-            strokeWidth: 1,
-          ),
-        ),
-        titlesData: FlTitlesData(
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 60,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  '\$${_formatNumber(value)}',
-                  style: const TextStyle(
-                    color: AppColors.textTertiary,
-                    fontSize: 11,
-                  ),
-                );
-              },
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 24,
-              interval: (spots.length / 4).ceilToDouble(),
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= points.length) return const SizedBox();
-
-                final date = points[index].timestamp;
-                String label;
-                switch (chartService.selectedTimeframe) {
-                  case ChartTimeframe.h24:
-                    label = DateFormat('HH:mm').format(date);
-                    break;
-                  case ChartTimeframe.d7:
-                    label = DateFormat('E d').format(date);
-                    break;
-                  case ChartTimeframe.m1:
-                  case ChartTimeframe.y1:
-                    label = DateFormat('d MMM').format(date);
-                    break;
-                }
-
-                return Text(
-                  label,
-                  style: const TextStyle(
-                    color: AppColors.textTertiary,
-                    fontSize: 10,
-                  ),
-                );
-              },
-            ),
-          ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        gridData: const FlGridData(show: false),
+        titlesData: const FlTitlesData(
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
         minX: 0,
@@ -149,14 +91,29 @@ class BalanceChartWidget extends StatelessWidget {
         minY: minY - padding,
         maxY: maxY + padding,
         lineTouchData: LineTouchData(
+          touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+            if (event is FlPanEndEvent || event is FlTapUpEvent || event is FlLongPressEnd) {
+              // Touch ended - reset to current value
+              onTouchValue?.call(null, null);
+            } else if (response?.lineBarSpots != null && response!.lineBarSpots!.isNotEmpty) {
+              final spot = response.lineBarSpots!.first;
+              final index = spot.x.toInt();
+              if (index >= 0 && index < timestamps.length) {
+                onTouchValue?.call(spot.y, timestamps[index]);
+              }
+            }
+          },
           touchTooltipData: LineTouchTooltipData(
+            tooltipRoundedRadius: 8,
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             getTooltipColor: (_) => AppColors.bgElevated,
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final index = spot.x.toInt();
-                final date = index < points.length ? points[index].timestamp : DateTime.now();
+                final isLastPoint = index == timestamps.length - 1;
+                final date = index < timestamps.length ? timestamps[index] : DateTime.now();
                 return LineTooltipItem(
-                  '${DateFormat('dd/MM HH:mm').format(date)}\n\$${NumberFormat('#,##0.00').format(spot.y)}',
+                  isLastPoint ? 'Ahora' : DateFormat('dd/MM/yyyy HH:mm').format(date),
                   const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 12,
@@ -166,33 +123,55 @@ class BalanceChartWidget extends StatelessWidget {
               }).toList();
             },
           ),
+          getTouchedSpotIndicator: (barData, spotIndexes) {
+            return spotIndexes.map((index) {
+              return TouchedSpotIndicatorData(
+                const FlLine(
+                  color: Colors.white38,
+                  strokeWidth: 1,
+                  dashArray: [5, 5],
+                ),
+                FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 6,
+                      color: AppColors.brandPrimary,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    );
+                  },
+                ),
+              );
+            }).toList();
+          },
         ),
         lineBarsData: [
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            curveSmoothness: 0.4,
-            color: lineColor,
-            barWidth: 2,
+            curveSmoothness: 0.3,
+            color: AppColors.brandPrimary,
+            barWidth: 2.5,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: lineColor.withOpacity(0.1),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.brandPrimary.withValues(alpha: 0.3),
+                  AppColors.brandPrimary.withValues(alpha: 0.05),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
             ),
           ),
         ],
       ),
     );
-  }
-
-  String _formatNumber(double value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
-    } else if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(1)}k';
-    }
-    return value.toStringAsFixed(0);
   }
 }
 
@@ -207,36 +186,30 @@ class _TimeframeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgTertiary,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: ChartTimeframe.values.map((tf) {
-          final isSelected = tf == selected;
-          return GestureDetector(
-            onTap: () => onChanged(tf),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.brandAccent : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                tf.label,
-                style: TextStyle(
-                  color: isSelected ? AppColors.bgPrimary : AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: ChartTimeframe.values.map((tf) {
+        final isSelected = tf == selected;
+        return GestureDetector(
+          onTap: () => onChanged(tf),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.brandPrimary.withValues(alpha: 0.2) : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              tf.label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
-          );
-        }).toList(),
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

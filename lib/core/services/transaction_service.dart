@@ -15,6 +15,9 @@ class TransactionService extends ChangeNotifier {
   int _total = 0;
   TransactionFilter _currentFilter = const TransactionFilter(limit: 20);
 
+  // Available exchanges - loaded once and never re-filtered
+  List<String>? _availableExchanges;
+
   TransactionService(this._apiService);
 
   List<Transaction> get transactions => _transactions;
@@ -31,7 +34,7 @@ class TransactionService extends ChangeNotifier {
   // Filter state getters for UI
   List<TransactionType> get selectedTypes => _currentFilter.types ?? [];
   List<String> get selectedExchanges => _currentFilter.exchanges ?? [];
-  List<String> get availableExchanges => _stats?.byExchange.keys.toList() ?? [];
+  List<String> get availableExchanges => _availableExchanges ?? [];
   DateTime? get startDate => _currentFilter.startDate;
   DateTime? get endDate => _currentFilter.endDate;
 
@@ -144,6 +147,12 @@ class TransactionService extends ChangeNotifier {
         queryParameters: queryParams.isEmpty ? null : queryParams,
       );
       _stats = TransactionStats.fromJson(response);
+
+      // Store available exchanges only once (first load without filters)
+      if (_availableExchanges == null && _stats != null) {
+        _availableExchanges = _stats!.byExchange.keys.toList();
+      }
+
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {

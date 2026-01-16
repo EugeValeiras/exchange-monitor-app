@@ -151,9 +151,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.brandAccent,
-              onPrimary: AppColors.bgPrimary,
+            colorScheme: ColorScheme.dark(
+              primary: AppColors.brandPrimary,
+              onPrimary: Colors.white,
+              primaryContainer: AppColors.brandPrimary.withValues(alpha: 0.3),
+              onPrimaryContainer: AppColors.textPrimary,
               surface: AppColors.bgCard,
               onSurface: AppColors.textPrimary,
             ),

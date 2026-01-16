@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/balance_service.dart';
 import '../../../shared/widgets/loading_shimmer.dart';
@@ -9,11 +9,17 @@ import '../../../shared/widgets/change_badge.dart';
 class BalanceCard extends StatelessWidget {
   final bool? hideSmallBalances;
   final VoidCallback? onToggleSmallBalances;
+  final double? overrideValue;
+  final DateTime? overrideDate;
+  final String? filterLabel;
 
   const BalanceCard({
     super.key,
     this.hideSmallBalances,
     this.onToggleSmallBalances,
+    this.overrideValue,
+    this.overrideDate,
+    this.filterLabel,
   });
 
   @override
@@ -23,6 +29,21 @@ class BalanceCard extends StatelessWidget {
 
     if (balanceService.isLoading && !balanceService.hasData) {
       return const _BalanceCardSkeleton();
+    }
+
+    // Use override value if provided, otherwise use current balance
+    final displayValue = overrideValue ?? balanceService.totalValueUsd;
+    final isShowingOverride = overrideValue != null;
+    final isShowingFilter = filterLabel != null;
+
+    // Determine the label
+    String label;
+    if (filterLabel != null) {
+      label = filterLabel!;
+    } else if (isShowingOverride) {
+      label = 'Balance Histórico';
+    } else {
+      label = 'Balance Total';
     }
 
     return Container(
@@ -48,11 +69,12 @@ class BalanceCard extends StatelessWidget {
           // Header
           Row(
             children: [
-              const Text(
-                'Balance Total',
-                style: TextStyle(
+              Text(
+                label,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const Spacer(),
@@ -78,7 +100,7 @@ class BalanceCard extends StatelessWidget {
           Text(
             hideSmallBalances == true
                 ? '••••••'
-                : currencyFormat.format(balanceService.totalValueUsd),
+                : currencyFormat.format(displayValue),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
@@ -88,23 +110,22 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // 24h change
-          if (balanceService.change24h != null ||
-              balanceService.changeUsd24h != null) ...[
-            if (hideSmallBalances == true)
-              const Text(
-                '••••••',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
-              )
-            else
-              PriceChange(
-                changeUsd: balanceService.changeUsd24h,
-                changePercent: balanceService.change24h,
+          // Show 24h change only when not showing override or filter
+          if (hideSmallBalances == true)
+            const Text(
+              '••••••',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
               ),
-          ],
+            )
+          else if (!isShowingOverride && !isShowingFilter &&
+              (balanceService.change24h != null ||
+                  balanceService.changeUsd24h != null))
+            PriceChange(
+              changeUsd: balanceService.changeUsd24h,
+              changePercent: balanceService.change24h,
+            ),
         ],
       ),
     );
@@ -126,14 +147,14 @@ class _BalanceCardSkeleton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.all(20),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const LoadingShimmer(width: 100, height: 14),
-          const SizedBox(height: 16),
-          const LoadingShimmer(width: 180, height: 36),
-          const SizedBox(height: 16),
-          const LoadingShimmer(width: 140, height: 28),
+          LoadingShimmer(width: 100, height: 14),
+          SizedBox(height: 16),
+          LoadingShimmer(width: 180, height: 36),
+          SizedBox(height: 16),
+          LoadingShimmer(width: 140, height: 28),
         ],
       ),
     );
