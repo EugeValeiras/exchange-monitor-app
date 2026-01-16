@@ -18,16 +18,44 @@ class ExchangeMonitorApp extends StatefulWidget {
   State<ExchangeMonitorApp> createState() => _ExchangeMonitorAppState();
 }
 
-class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> {
+class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBindingObserver {
   bool _servicesInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Initialize auth on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthService>().initialize();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Update widget when app comes to foreground
+    if (state == AppLifecycleState.resumed && _servicesInitialized) {
+      _updateWidget();
+    }
+  }
+
+  void _updateWidget() {
+    final authService = context.read<AuthService>();
+    if (!authService.isAuthenticated) return;
+
+    final balanceService = context.read<BalanceService>();
+    final chartService = context.read<ChartService>();
+    final priceService = context.read<PriceService>();
+
+    final widgetService = WidgetService(balanceService, chartService, priceService);
+    widgetService.updateWidget();
   }
 
   void _initializeServices(BuildContext context) async {
@@ -38,6 +66,9 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> {
     final token = await authService.getStoredToken();
 
     if (token != null) {
+      // Save token to App Group for widget background fetch
+      await WidgetService.saveAuthToken(token);
+
       // Initialize PriceService with token and connect
       final priceService = context.read<PriceService>();
       priceService.setAuthToken(token);
@@ -55,7 +86,7 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> {
       context.read<TransactionService>().refresh();
 
       // Update iOS widget with latest data
-      final widgetService = WidgetService(balanceService, chartService);
+      final widgetService = WidgetService(balanceService, chartService, priceService);
       widgetService.updateWidget();
     }
   }

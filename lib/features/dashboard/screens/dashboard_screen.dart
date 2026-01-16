@@ -53,7 +53,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) {
       final balanceService = context.read<BalanceService>();
       final chartService = context.read<ChartService>();
-      final widgetService = WidgetService(balanceService, chartService);
+      final priceService = context.read<PriceService>();
+      final widgetService = WidgetService(balanceService, chartService, priceService);
       widgetService.updateWidget();
     }
   }

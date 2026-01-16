@@ -3,6 +3,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'balance_service.dart';
 import 'chart_service.dart';
+import 'price_service.dart';
 
 class WidgetService {
   static const String appGroupId = 'group.com.eugeniovaleiras.exchangeMonitor';
@@ -10,8 +11,9 @@ class WidgetService {
 
   final BalanceService _balanceService;
   final ChartService _chartService;
+  final PriceService? _priceService;
 
-  WidgetService(this._balanceService, this._chartService);
+  WidgetService(this._balanceService, this._chartService, [this._priceService]);
 
   Future<void> updateWidget() async {
     try {
@@ -20,14 +22,8 @@ class WidgetService {
         'totalBalance': _balanceService.totalValueUsd,
         'change24hPercent': _balanceService.change24h ?? 0.0,
         'change24hUsd': _balanceService.changeUsd24h ?? 0.0,
-        'chartData': _chartService.dataPoints.take(20).toList(),
-        'assets': _balanceService.topAssets.take(3).map((asset) => {
-          'symbol': asset.asset,
-          'name': _getAssetName(asset.asset),
-          'price': asset.priceUsd ?? 0.0,
-          'change24h': asset.change24h ?? 0.0,
-          'sparkline': _generateSparkline(asset.priceUsd ?? 0.0, asset.change24h ?? 0.0),
-        }).toList(),
+        'chartData': _chartService.dataPoints,
+        'assets': _getMarketAssets(),
         'lastUpdated': DateTime.now().toIso8601String(),
       };
 
@@ -51,6 +47,28 @@ class WidgetService {
         print('Error updating widget: $e');
       }
     }
+  }
+
+  List<Map<String, dynamic>> _getMarketAssets() {
+    // Hardcoded favorite markets for now - will be configurable later
+    const favoriteSymbols = ['BTC', 'NEXO', 'MON'];
+
+    return favoriteSymbols.map((symbol) {
+      // Try to find the asset in balance service
+      final asset = _balanceService.assets.where((a) => a.asset.toUpperCase() == symbol).firstOrNull;
+
+      // Get price and change from PriceService or asset
+      final price = _priceService?.getPriceByAsset(symbol) ?? asset?.priceUsd ?? 0.0;
+      final change24h = _priceService?.getChange24hByAsset(symbol) ?? asset?.change24h ?? 0.0;
+
+      return {
+        'symbol': symbol,
+        'name': _getAssetName(symbol),
+        'price': price,
+        'change24h': change24h,
+        'sparkline': _generateSparkline(price, change24h),
+      };
+    }).toList();
   }
 
   String _getAssetName(String symbol) {
@@ -106,5 +124,12 @@ class WidgetService {
 
   static Future<void> initialize() async {
     await HomeWidget.setAppGroupId(appGroupId);
+  }
+
+  /// Save auth token to App Group so widget can fetch data directly
+  static Future<void> saveAuthToken(String? token) async {
+    if (token != null) {
+      await HomeWidget.saveWidgetData<String>('authToken', token);
+    }
   }
 }

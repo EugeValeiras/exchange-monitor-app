@@ -103,7 +103,7 @@ class BalanceCard extends StatelessWidget {
                 : currencyFormat.format(displayValue),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 36,
+              fontSize: 32,
               fontWeight: FontWeight.w700,
               letterSpacing: -1,
             ),

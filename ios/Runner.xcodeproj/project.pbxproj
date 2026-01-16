@@ -13,7 +13,7 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		977D177E2F1A89C6002A248A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 977D177D2F1A89C6002A248A /* WidgetKit.framework */; };
 		977D17802F1A89C6002A248A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 977D177F2F1A89C6002A248A /* SwiftUI.framework */; };
-		977D178F2F1A89C8002A248A /* ExchangeWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 977D177C2F1A89C6002A248A /* ExchangeWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		977D178F2F1A89C8002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 977D177C2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -55,7 +55,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				977D178F2F1A89C8002A248A /* ExchangeWidgetExtension.appex in Embed Foundation Extensions */,
+				977D178F2F1A89C8002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -87,7 +87,7 @@
 		8F39386AD5F2A242B8B6222B /* Pods-Runner.debug-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-prod.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-prod.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
-		977D177C2F1A89C6002A248A /* ExchangeWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ExchangeWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		977D177C2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		977D177D2F1A89C6002A248A /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		977D177F2F1A89C6002A248A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		977D17B82F1A8A6D002A248A /* ExchangeWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ExchangeWidgetExtension.entitlements; sourceTree = "<group>"; };
@@ -106,12 +106,12 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		977D17BA2F1A8F50002A248A /* Exceptions for "ExchangeWidget" folder in "ExchangeWidgetExtension" target */ = {
+		977D17BA2F1A8F50002A248A /* Exceptions for "ExchangeWidget" folder in "com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 977D177B2F1A89C6002A248A /* ExchangeWidgetExtension */;
+			target = 977D177B2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -119,7 +119,7 @@
 		977D17812F1A89C6002A248A /* ExchangeWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				977D17BA2F1A8F50002A248A /* Exceptions for "ExchangeWidget" folder in "ExchangeWidgetExtension" target */,
+				977D17BA2F1A8F50002A248A /* Exceptions for "ExchangeWidget" folder in "com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension" target */,
 			);
 			explicitFileTypes = {
 			};
@@ -208,7 +208,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
-				977D177C2F1A89C6002A248A /* ExchangeWidgetExtension.appex */,
+				977D177C2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -276,9 +276,9 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		977D177B2F1A89C6002A248A /* ExchangeWidgetExtension */ = {
+		977D177B2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 977D179B2F1A89C8002A248A /* Build configuration list for PBXNativeTarget "ExchangeWidgetExtension" */;
+			buildConfigurationList = 977D179B2F1A89C8002A248A /* Build configuration list for PBXNativeTarget "com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension" */;
 			buildPhases = (
 				977D17782F1A89C6002A248A /* Sources */,
 				977D17792F1A89C6002A248A /* Frameworks */,
@@ -291,9 +291,9 @@
 			fileSystemSynchronizedGroups = (
 				977D17812F1A89C6002A248A /* ExchangeWidget */,
 			);
-			name = ExchangeWidgetExtension;
+			name = com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension;
 			productName = ExchangeWidgetExtension;
-			productReference = 977D177C2F1A89C6002A248A /* ExchangeWidgetExtension.appex */;
+			productReference = 977D177C2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
@@ -360,7 +360,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
-				977D177B2F1A89C6002A248A /* ExchangeWidgetExtension */,
+				977D177B2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -523,7 +523,7 @@
 		};
 		977D178E2F1A89C8002A248A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 977D177B2F1A89C6002A248A /* ExchangeWidgetExtension */;
+			target = 977D177B2F1A89C6002A248A /* com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension */;
 			targetProxy = 977D178D2F1A89C8002A248A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -1233,7 +1233,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1281,7 +1281,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1326,7 +1326,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1371,7 +1371,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1419,7 +1419,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1464,7 +1464,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1509,7 +1509,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1557,7 +1557,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1602,7 +1602,7 @@
 				INFOPLIST_FILE = ExchangeWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExchangeWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1886,7 +1886,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		977D179B2F1A89C8002A248A /* Build configuration list for PBXNativeTarget "ExchangeWidgetExtension" */ = {
+		977D179B2F1A89C8002A248A /* Build configuration list for PBXNativeTarget "com.eugeniovaleiras.exchangeMonitor.ExchangeWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				977D17912F1A89C8002A248A /* Debug */,
