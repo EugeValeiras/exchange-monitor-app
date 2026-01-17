@@ -64,14 +64,44 @@ class WidgetService {
       final price = _priceService?.getPriceByAsset(symbol) ?? asset?.priceUsd ?? 0.0;
       final change24h = _priceService?.getChange24hByAsset(symbol) ?? asset?.change24h ?? 0.0;
 
+      // Get real sparkline data from ChartService (24h data by asset)
+      final sparkline = _getAssetSparkline(symbol) ?? _generateSparkline(price, change24h);
+
       return {
         'symbol': symbol,
         'name': _getAssetName(symbol),
         'price': price,
         'change24h': change24h,
-        'sparkline': _generateSparkline(price, change24h),
+        'sparkline': sparkline,
       };
     }).toList();
+  }
+
+  List<double>? _getAssetSparkline(String symbol) {
+    // Get asset chart data from ChartService (24h timeframe)
+    final chartDataByAsset = _chartService.chartDataByAsset;
+    if (chartDataByAsset == null) return null;
+
+    // Find the asset data matching the symbol
+    final assetData = chartDataByAsset.assetData
+        .where((ad) => ad.asset.toUpperCase() == symbol.toUpperCase())
+        .firstOrNull;
+
+    if (assetData == null || assetData.data.isEmpty) return null;
+
+    // Downsample to ~12 points for sparkline (widget doesn't need all points)
+    final data = assetData.data;
+    if (data.length <= 12) return data;
+
+    final step = data.length / 12;
+    final sparkline = <double>[];
+    for (var i = 0; i < 12; i++) {
+      final index = (i * step).floor().clamp(0, data.length - 1);
+      sparkline.add(data[index]);
+    }
+    // Ensure last point is the actual last value
+    sparkline[11] = data.last;
+    return sparkline;
   }
 
   String _getAssetName(String symbol) {

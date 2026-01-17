@@ -234,7 +234,10 @@ class _LogoPainter extends CustomPainter {
   }
 
   Path _getAnimatedPath(Path originalPath, double progress) {
-    final metrics = originalPath.computeMetrics().first;
+    if (progress <= 0) return Path();
+    final pathMetrics = originalPath.computeMetrics().toList();
+    if (pathMetrics.isEmpty) return Path();
+    final metrics = pathMetrics.first;
     final length = metrics.length * progress;
     return metrics.extractPath(0, length);
   }

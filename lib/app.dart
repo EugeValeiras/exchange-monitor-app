@@ -97,7 +97,7 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBin
 
       // Register push notification token
       final notificationService = context.read<NotificationService>();
-      notificationService.registerTokenAfterLogin();
+      await notificationService.registerTokenAfterLogin();
     }
   }
 
@@ -115,7 +115,7 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBin
               backgroundColor: AppColors.bgPrimary,
               body: Center(
                 child: LogoLoader(
-                  size: 120,
+                  size: 100,
                   showText: false,
                 ),
               ),

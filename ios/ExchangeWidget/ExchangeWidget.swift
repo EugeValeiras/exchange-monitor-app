@@ -411,7 +411,7 @@ struct AssetRowLarge: View {
     let asset: AssetData
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             // Coin icon
             CoinIcon(symbol: asset.symbol, size: 32)
 
@@ -425,15 +425,22 @@ struct AssetRowLarge: View {
                     .foregroundColor(.textSecondary)
                     .lineLimit(1)
             }
-            .frame(width: 70, alignment: .leading)
+            .frame(width: 75, alignment: .leading)
 
-            Spacer()
+            // Sparkline chart
+            SparklineChart(
+                data: asset.sparkline.isEmpty ? [0, 0] : asset.sparkline,
+                isPositive: asset.change24h >= 0,
+                height: 35
+            )
 
             // Price and change
             VStack(alignment: .trailing, spacing: 2) {
                 Text(formatPrice(asset.price))
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 HStack(spacing: 2) {
                     Image(systemName: asset.change24h >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
                         .font(.system(size: 8))
@@ -442,6 +449,7 @@ struct AssetRowLarge: View {
                 }
                 .foregroundColor(asset.change24h >= 0 ? .positive : .negative)
             }
+            .frame(width: 85, alignment: .trailing)
         }
     }
 

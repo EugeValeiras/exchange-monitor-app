@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "6924367316",
+    "project_id": "exchange-monitor-ec0b8",
+    "storage_bucket": "exchange-monitor-ec0b8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:6924367316:android:e5b7d6b121b69ca7c01241",
+        "android_client_info": {
+          "package_name": "com.eugeniovaleiras.exchange_monitor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMFON97bSSRD_kzcca8cskXBd8r8zVRl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
