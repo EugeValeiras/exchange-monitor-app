@@ -114,7 +114,7 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Show 24h change - use filtered values when filtering, otherwise service values
+          // Show change - historical diff when touching chart, otherwise 24h change
           if (hideSmallBalances == true)
             const Text(
               '••••••',
@@ -123,7 +123,22 @@ class BalanceCard extends StatelessWidget {
                 fontSize: 16,
               ),
             )
-          else if (!isShowingOverride) ...[
+          else if (isShowingOverride) ...[
+            // Show difference from current value to historical point
+            Builder(builder: (context) {
+              final currentValue = balanceService.totalValueUsd;
+              final historicalValue = overrideValue!;
+              final diffUsd = historicalValue - currentValue;
+              final diffPercent = currentValue != 0
+                  ? (diffUsd / currentValue) * 100
+                  : 0.0;
+              return PriceChange(
+                changeUsd: diffUsd,
+                changePercent: diffPercent,
+                label: 'vs ahora',
+              );
+            }),
+          ] else ...[
             if (isShowingFilter && (filteredChangePercent != null || filteredChangeUsd != null))
               PriceChange(
                 changeUsd: filteredChangeUsd,

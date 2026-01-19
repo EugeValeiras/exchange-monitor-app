@@ -89,18 +89,18 @@ class WidgetService {
 
     if (assetData == null || assetData.data.isEmpty) return null;
 
-    // Downsample to ~12 points for sparkline (widget doesn't need all points)
+    // Downsample to 24 points for sparkline
     final data = assetData.data;
-    if (data.length <= 12) return data;
+    if (data.length <= 24) return data;
 
-    final step = data.length / 12;
+    final step = data.length / 24;
     final sparkline = <double>[];
-    for (var i = 0; i < 12; i++) {
+    for (var i = 0; i < 24; i++) {
       final index = (i * step).floor().clamp(0, data.length - 1);
       sparkline.add(data[index]);
     }
     // Ensure last point is the actual last value
-    sparkline[11] = data.last;
+    sparkline[23] = data.last;
     return sparkline;
   }
 
@@ -164,5 +164,50 @@ class WidgetService {
     if (token != null) {
       await HomeWidget.saveWidgetData<String>('authToken', token);
     }
+  }
+
+  /// Debug method to check widget status
+  static Future<Map<String, dynamic>> getWidgetDebugInfo() async {
+    final lastTimelineCall = await HomeWidget.getWidgetData<double>('lastTimelineCall');
+    final lastFetchSuccess = await HomeWidget.getWidgetData<bool>('lastFetchSuccess');
+    final lastFetchTime = await HomeWidget.getWidgetData<double>('lastFetchTime');
+    final lastFetchError = await HomeWidget.getWidgetData<String>('lastFetchError');
+    final balanceError = await HomeWidget.getWidgetData<String>('balanceError');
+    final authToken = await HomeWidget.getWidgetData<String>('authToken');
+    final debugToken = await HomeWidget.getWidgetData<String>('debugToken');
+    final pushDataReceivedAt = await HomeWidget.getWidgetData<double>('pushDataReceivedAt');
+    final refreshTrigger = await HomeWidget.getWidgetData<double>('refreshTrigger');
+
+    final now = DateTime.now().millisecondsSinceEpoch / 1000;
+
+    String formatTimestamp(double? ts) {
+      if (ts == null) return 'never';
+      final date = DateTime.fromMillisecondsSinceEpoch((ts * 1000).toInt());
+      final ago = ((now - ts) / 60).toStringAsFixed(1);
+      return '${date.hour}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')} (${ago}m ago)';
+    }
+
+    return {
+      'lastTimelineCall': formatTimestamp(lastTimelineCall),
+      'lastFetchTime': formatTimestamp(lastFetchTime),
+      'lastFetchSuccess': lastFetchSuccess ?? 'unknown',
+      'lastFetchError': lastFetchError ?? 'none',
+      'balanceError': balanceError ?? 'none',
+      'pushDataReceivedAt': formatTimestamp(pushDataReceivedAt),
+      'refreshTrigger': formatTimestamp(refreshTrigger),
+      'hasAuthToken (Flutter saved)': authToken != null && authToken.isNotEmpty,
+      'flutterTokenFull': authToken ?? 'null',
+      'widgetReadToken': debugToken ?? 'widget never read token',
+    };
+  }
+
+  /// Print widget debug info to console
+  static Future<void> printDebugInfo() async {
+    final info = await getWidgetDebugInfo();
+    debugPrint('=== Widget Debug Info ===');
+    info.forEach((key, value) {
+      debugPrint('  $key: $value');
+    });
+    debugPrint('========================');
   }
 }

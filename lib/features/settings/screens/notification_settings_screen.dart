@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../shared/widgets/notification_permission_sheet.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -46,6 +48,21 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       await context.read<NotificationService>().setPriceChangeThreshold(value);
     } catch (e) {
       setState(() => _error = 'Error al actualizar umbral');
+    }
+  }
+
+  Future<void> _requestPermission() async {
+    final notificationService = context.read<NotificationService>();
+
+    // Show the permission bottom sheet
+    final accepted = await NotificationPermissionSheet.show(context);
+
+    if (accepted) {
+      // User accepted, request native permission
+      final granted = await notificationService.requestPermissionAndSetup();
+      if (granted) {
+        await notificationService.registerTokenAfterLogin();
+      }
     }
   }
 
@@ -120,14 +137,48 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.warning.withOpacity(0.3)),
                     ),
-                    child: const Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Permisos de notificacion no otorgados. Activalos en la configuracion del dispositivo.',
-                            style: TextStyle(color: AppColors.warning),
+                        const Row(
+                          children: [
+                            Icon(Icons.notifications_off_rounded, color: AppColors.warning),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Notificaciones desactivadas',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Activa las notificaciones para recibir alertas de cambios de precio en tus activos favoritos.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _requestPermission,
+                            icon: const Icon(Icons.notifications_active_rounded, size: 18),
+                            label: const Text('Activar notificaciones'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.warning,
+                              foregroundColor: AppColors.bgPrimary,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -276,6 +327,75 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                     ),
                   ),
                 ],
+
+                // Debug: FCM Token
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgTertiary,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.bug_report,
+                            color: AppColors.textSecondary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Debug: FCM Token',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (notificationService.fcmToken != null)
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 18),
+                              color: AppColors.brandAccent,
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(
+                                  text: notificationService.fcmToken!,
+                                ));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Token copiado'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        notificationService.fcmToken ?? 'No token disponible',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Permiso: ${notificationService.hasPermission ? "Sí" : "No"} | '
+                        'Inicializado: ${notificationService.isInitialized ? "Sí" : "No"}',
+                        style: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
     );

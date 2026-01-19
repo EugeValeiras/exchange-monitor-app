@@ -109,11 +109,13 @@ class ChangeText extends StatelessWidget {
 class PriceChange extends StatelessWidget {
   final double? changeUsd;
   final double? changePercent;
+  final String? label;
 
   const PriceChange({
     super.key,
     this.changeUsd,
     this.changePercent,
+    this.label,
   });
 
   @override
@@ -151,6 +153,13 @@ class PriceChange extends StatelessWidget {
               '($sign${changePercent!.toStringAsFixed(2)}%)',
               style: AppTextStyles.monoXSmall.copyWith(color: color),
             ),
+          if (label != null) ...[
+            const SizedBox(width: 6),
+            Text(
+              label!,
+              style: AppTextStyles.monoXSmall.copyWith(color: color),
+            ),
+          ],
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/price_service.dart';
@@ -12,6 +13,8 @@ import 'core/services/notification_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
 import 'shared/widgets/logo_loader.dart';
+import 'shared/widgets/notification_permission_sheet.dart';
+import 'shared/widgets/in_app_notification.dart';
 
 class ExchangeMonitorApp extends StatefulWidget {
   const ExchangeMonitorApp({super.key});
@@ -21,8 +24,11 @@ class ExchangeMonitorApp extends StatefulWidget {
 }
 
 class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBindingObserver {
+  static const _notificationSheetShownKey = 'notification_permission_sheet_shown';
+
   bool _servicesInitialized = false;
   bool _wasAuthenticated = false;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -43,8 +49,8 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBin
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // Update widget when app comes to foreground
-    if (state == AppLifecycleState.resumed && _servicesInitialized) {
+    // Only update widget when app goes to background
+    if (state == AppLifecycleState.paused && _servicesInitialized) {
       _updateWidget();
     }
   }
@@ -91,22 +97,73 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBin
 
       context.read<TransactionService>().refresh();
 
-      // Update iOS widget with latest data
-      final widgetService = WidgetService(balanceService, chartService, priceService, favoritesService);
-      widgetService.updateWidget();
+      // Show notification permission sheet if not shown before
+      await _showNotificationPermissionIfNeeded(context);
 
-      // Register push notification token
-      final notificationService = context.read<NotificationService>();
+      // Debug: print widget status
+      debugPrint('>>> PRINTING WIDGET DEBUG INFO <<<');
+      await WidgetService.printDebugInfo();
+    }
+  }
+
+  Future<void> _showNotificationPermissionIfNeeded(BuildContext context) async {
+    final notificationService = context.read<NotificationService>();
+
+    // Skip if already has permission and token
+    if (notificationService.hasPermission) {
       await notificationService.registerTokenAfterLogin();
+      return;
+    }
+
+    // Check if we've shown the sheet before
+    final prefs = await SharedPreferences.getInstance();
+    final sheetShown = prefs.getBool(_notificationSheetShownKey) ?? false;
+
+    if (sheetShown) {
+      // Sheet was shown before - try to setup messaging anyway
+      // (iOS won't show dialog again if already granted)
+      final granted = await notificationService.requestPermissionAndSetup();
+      if (granted) {
+        await notificationService.registerTokenAfterLogin();
+      }
+      return;
+    }
+
+    // Get the navigator context
+    final navigatorContext = _navigatorKey.currentContext;
+    if (navigatorContext == null) return;
+
+    // Small delay to ensure the UI is ready
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Show the permission bottom sheet
+    final accepted = await NotificationPermissionSheet.show(navigatorContext);
+
+    // Mark as shown
+    await prefs.setBool(_notificationSheetShownKey, true);
+
+    if (accepted) {
+      // User accepted, request native permission
+      final granted = await notificationService.requestPermissionAndSetup();
+      if (granted) {
+        await notificationService.registerTokenAfterLogin();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Exchange Monitor',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      builder: (context, child) {
+        // Wrap the entire app with in-app notification overlay
+        return InAppNotificationOverlay(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: Consumer<AuthService>(
         builder: (context, authService, _) {
           // Show loading while checking auth
@@ -115,7 +172,7 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp> with WidgetsBin
               backgroundColor: AppColors.bgPrimary,
               body: Center(
                 child: LogoLoader(
-                  size: 100,
+                  size: 120,
                   showText: false,
                 ),
               ),

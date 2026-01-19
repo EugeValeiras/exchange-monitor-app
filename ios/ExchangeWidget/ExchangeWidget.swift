@@ -7,6 +7,7 @@
 
 import WidgetKit
 import SwiftUI
+import UIKit
 
 // MARK: - Data Models
 
@@ -56,6 +57,18 @@ struct AssetBalanceResponse: Codable {
     let change24h: Double?
 }
 
+struct ChartDataResponse: Codable {
+    let labels: [String]
+    let data: [Double]
+    let changeUsd: Double
+    let changePercent: Double
+    let timeframe: String
+}
+
+struct FavoritesResponse: Codable {
+    let favorites: [String]
+}
+
 // MARK: - Timeline Provider
 
 struct Provider: TimelineProvider {
@@ -72,17 +85,32 @@ struct Provider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WidgetEntry>) -> ()) {
-        // Try to fetch fresh data from API
-        fetchFreshData { freshData in
-            let data = freshData ?? loadCachedData() ?? .placeholder
-            let currentDate = Date()
-            let entry = WidgetEntry(date: currentDate, data: data)
+        print("[Widget] getTimeline called at \(Date())")
 
-            // Refresh every 15 minutes
-            let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate)!
-            let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-            completion(timeline)
+        // Save timestamp to UserDefaults so we can debug from main app
+        let defaults = UserDefaults(suiteName: appGroupId)
+        defaults?.set(Date().timeIntervalSince1970, forKey: "lastTimelineCall")
+
+        // Use cached data from Flutter (iOS widgets can't reliably make network requests in background)
+        let data = loadCachedData() ?? .placeholder
+        let currentDate = Date()
+
+        defaults?.set(data.lastUpdated.isEmpty ? "no_cached_data" : "using_cache", forKey: "lastFetchError")
+        defaults?.set(Date().timeIntervalSince1970, forKey: "lastFetchTime")
+        defaults?.set(!data.lastUpdated.isEmpty, forKey: "lastFetchSuccess")
+
+        print("[Widget] Using cached data, lastUpdated: \(data.lastUpdated)")
+
+        // Generate entries for the next 30 minutes (every 5 minutes)
+        var entries: [WidgetEntry] = []
+        for minuteOffset in stride(from: 0, to: 30, by: 5) {
+            let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: currentDate)!
+            entries.append(WidgetEntry(date: entryDate, data: data))
         }
+
+        // Use .atEnd so iOS calls getTimeline again when all entries are consumed
+        let timeline = Timeline(entries: entries, policy: .atEnd)
+        completion(timeline)
     }
 
     private func loadCachedData() -> WidgetData? {
@@ -98,9 +126,166 @@ struct Provider: TimelineProvider {
     }
 
     private func fetchFreshData(completion: @escaping (WidgetData?) -> Void) {
-        guard let token = getAuthToken(),
-              let url = URL(string: "\(apiBaseUrl)/balances") else {
+        let defaults = UserDefaults(suiteName: appGroupId)
+
+        guard let token = getAuthToken() else {
+            print("[Widget] No auth token available")
+            defaults?.set("no_token", forKey: "lastFetchError")
             completion(nil)
+            return
+        }
+
+        print("[Widget] Auth token found: \(token)")
+        defaults?.set(token, forKey: "debugToken")
+
+        let group = DispatchGroup()
+
+        var balanceResponse: BalanceResponse?
+        var chartData: [Double] = []
+        var favorites: [String] = []
+
+        // Fetch balance data
+        group.enter()
+        fetchBalances(token: token) { response in
+            balanceResponse = response
+            group.leave()
+        }
+
+        // Fetch chart data
+        group.enter()
+        fetchChartData(token: token) { data in
+            chartData = data
+            group.leave()
+        }
+
+        // Fetch favorites
+        group.enter()
+        fetchFavorites(token: token) { favs in
+            favorites = favs
+            group.leave()
+        }
+
+        // Wait for all requests to complete
+        group.notify(queue: .main) { [self] in
+            guard let balance = balanceResponse else {
+                print("[Widget] Balance fetch failed")
+                defaults?.set("balance_fetch_failed", forKey: "lastFetchError")
+                completion(nil)
+                return
+            }
+
+            print("[Widget] Balance fetched successfully: $\(balance.totalValueUsd)")
+
+            // Use fetched favorites or fallback to defaults
+            let favoriteSymbols = favorites.isEmpty ? ["BTC", "ETH", "SOL"] : Array(favorites.prefix(3))
+
+            // Build assets from balance data
+            let assets = favoriteSymbols.compactMap { symbol -> AssetData? in
+                guard let asset = balance.byAsset.first(where: { $0.asset.uppercased() == symbol.uppercased() }) else {
+                    return nil
+                }
+
+                // Generate sparkline based on price and change
+                let price = asset.priceUsd ?? 0
+                let change = asset.change24h ?? 0
+                let sparkline = generateSparkline(currentPrice: price, change24h: change)
+
+                return AssetData(
+                    symbol: symbol.uppercased(),
+                    name: getAssetName(symbol.uppercased()),
+                    price: price,
+                    change24h: change,
+                    sparkline: sparkline
+                )
+            }
+
+            // Use fetched chart data or fallback to cache
+            let cachedData = loadCachedData()
+            let finalChartData = chartData.isEmpty ? (cachedData?.chartData ?? []) : chartData
+
+            let widgetData = WidgetData(
+                totalBalance: balance.totalValueUsd,
+                change24hPercent: balance.change24h ?? 0,
+                change24hUsd: balance.changeUsd24h ?? 0,
+                chartData: finalChartData,
+                assets: assets.isEmpty ? (cachedData?.assets ?? []) : assets,
+                lastUpdated: ISO8601DateFormatter().string(from: Date())
+            )
+
+            // Save to cache
+            if let jsonData = try? JSONEncoder().encode(widgetData),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                defaults?.set(jsonString, forKey: "widgetData")
+                defaults?.set("success", forKey: "lastFetchError")
+                print("[Widget] Data saved to cache successfully")
+            }
+
+            completion(widgetData)
+        }
+    }
+
+    private func fetchBalances(token: String, completion: @escaping (BalanceResponse?) -> Void) {
+        let defaults = UserDefaults(suiteName: appGroupId)
+
+        guard let url = URL(string: "\(apiBaseUrl)/balances") else {
+            defaults?.set("invalid_url", forKey: "balanceError")
+            completion(nil)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 30 // Increased timeout
+
+        print("[Widget] Fetching balances from: \(url)")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[Widget] Balance fetch error: \(error.localizedDescription)")
+                defaults?.set("network_error: \(error.localizedDescription)", forKey: "balanceError")
+                completion(nil)
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                defaults?.set("no_http_response", forKey: "balanceError")
+                completion(nil)
+                return
+            }
+
+            print("[Widget] Balance response status: \(httpResponse.statusCode)")
+            defaults?.set("status_\(httpResponse.statusCode)", forKey: "balanceError")
+
+            guard httpResponse.statusCode == 200 else {
+                if let data = data, let body = String(data: data, encoding: .utf8) {
+                    print("[Widget] Error body: \(body)")
+                    defaults?.set("status_\(httpResponse.statusCode): \(body.prefix(100))", forKey: "balanceError")
+                }
+                completion(nil)
+                return
+            }
+
+            guard let data = data else {
+                defaults?.set("no_data", forKey: "balanceError")
+                completion(nil)
+                return
+            }
+
+            do {
+                let balanceResponse = try JSONDecoder().decode(BalanceResponse.self, from: data)
+                defaults?.set("success", forKey: "balanceError")
+                completion(balanceResponse)
+            } catch {
+                print("[Widget] JSON decode error: \(error)")
+                defaults?.set("decode_error: \(error.localizedDescription)", forKey: "balanceError")
+                completion(nil)
+            }
+        }.resume()
+    }
+
+    private func fetchChartData(token: String, completion: @escaping ([Double]) -> Void) {
+        guard let url = URL(string: "\(apiBaseUrl)/snapshots/chart-data?timeframe=24h") else {
+            completion([])
             return
         }
 
@@ -112,47 +297,52 @@ struct Provider: TimelineProvider {
             guard let data = data,
                   let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200,
-                  let balanceResponse = try? JSONDecoder().decode(BalanceResponse.self, from: data) else {
-                completion(nil)
+                  let chartResponse = try? JSONDecoder().decode(ChartDataResponse.self, from: data) else {
+                completion([])
                 return
             }
-
-            // Build widget data from API response
-            let favoriteSymbols = ["BTC", "NEXO", "MON"]
-            let assets = favoriteSymbols.compactMap { symbol -> AssetData? in
-                guard let asset = balanceResponse.byAsset.first(where: { $0.asset.uppercased() == symbol }) else {
-                    return nil
-                }
-                return AssetData(
-                    symbol: symbol,
-                    name: getAssetName(symbol),
-                    price: asset.priceUsd ?? 0,
-                    change24h: asset.change24h ?? 0,
-                    sparkline: []
-                )
-            }
-
-            // Get chart data from cache (API doesn't return it in balances endpoint)
-            let cachedData = loadCachedData()
-
-            let widgetData = WidgetData(
-                totalBalance: balanceResponse.totalValueUsd,
-                change24hPercent: balanceResponse.change24h ?? 0,
-                change24hUsd: balanceResponse.changeUsd24h ?? 0,
-                chartData: cachedData?.chartData ?? [],
-                assets: assets.isEmpty ? (cachedData?.assets ?? []) : assets,
-                lastUpdated: ISO8601DateFormatter().string(from: Date())
-            )
-
-            // Save to cache
-            if let jsonData = try? JSONEncoder().encode(widgetData),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                let defaults = UserDefaults(suiteName: appGroupId)
-                defaults?.set(jsonString, forKey: "widgetData")
-            }
-
-            completion(widgetData)
+            completion(chartResponse.data)
         }.resume()
+    }
+
+    private func fetchFavorites(token: String, completion: @escaping ([String]) -> Void) {
+        guard let url = URL(string: "\(apiBaseUrl)/favorites") else {
+            completion([])
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 10
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data,
+                  let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let favoritesResponse = try? JSONDecoder().decode(FavoritesResponse.self, from: data) else {
+                completion([])
+                return
+            }
+            completion(favoritesResponse.favorites)
+        }.resume()
+    }
+
+    private func generateSparkline(currentPrice: Double, change24h: Double) -> [Double] {
+        guard currentPrice > 0 else { return [] }
+
+        let startPrice = currentPrice / (1 + change24h / 100)
+        let priceChange = currentPrice - startPrice
+        var sparkline: [Double] = []
+
+        for i in 0..<6 {
+            let progress = Double(i) / 5.0
+            // Add some variance to make it look more natural
+            let variance = (i % 2 == 0 ? 0.02 : -0.01) * priceChange
+            sparkline.append(startPrice + (priceChange * progress) + variance)
+        }
+        sparkline[5] = currentPrice // Ensure last point is current price
+
+        return sparkline
     }
 
     private func getAssetName(_ symbol: String) -> String {
@@ -449,7 +639,7 @@ struct AssetRowLarge: View {
                 }
                 .foregroundColor(asset.change24h >= 0 ? .positive : .negative)
             }
-            .frame(width: 85, alignment: .trailing)
+            .frame(width: 75, alignment: .trailing)
         }
     }
 
@@ -489,18 +679,71 @@ struct ExchangeWidgetEntryView: View {
         }
     }
 
+    private func formatLastUpdated(_ isoString: String) -> String {
+        // Debug: show raw string if empty
+        if isoString.isEmpty {
+            return "No data"
+        }
+
+        var date: Date?
+
+        // Try standard ISO8601 format first
+        let isoFormatter = ISO8601DateFormatter()
+        date = isoFormatter.date(from: isoString)
+
+        // Try with fractional seconds (Flutter format: 2024-01-19T15:30:45.123456)
+        if date == nil {
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            date = isoFormatter.date(from: isoString)
+        }
+
+        // Fallback: try DateFormatter with multiple formats
+        if date == nil {
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+
+            let formats = [
+                "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS",
+                "yyyy-MM-dd'T'HH:mm:ss"
+            ]
+
+            for format in formats {
+                dateFormatter.dateFormat = format
+                if let parsed = dateFormatter.date(from: isoString) {
+                    date = parsed
+                    break
+                }
+            }
+        }
+
+        // If still no date, show parse error
+        guard let finalDate = date else {
+            return "Parse err"
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: finalDate)
+    }
+
+    private func formatEntryDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter.string(from: date)
+    }
+
     var smallWidget: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("My Wealth")
                     .font(.system(size: 12))
                     .foregroundColor(.textSecondary)
-
                 Spacer()
-
-                Text(formatLastUpdated(entry.data.lastUpdated))
+                // Show entry date (when iOS rendered) to debug refresh
+                Text(formatEntryDate(entry.date))
                     .font(.system(size: 10))
-                    .foregroundColor(.textSecondary)
+                    .foregroundColor(.brandAccent.opacity(0.8))
             }
 
             Text(formatCurrency(entry.data.totalBalance))
@@ -527,20 +770,20 @@ struct ExchangeWidgetEntryView: View {
 
     var mediumWidget: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Last updated
-            HStack {
-                Spacer()
-                Text(formatLastUpdated(entry.data.lastUpdated))
-                    .font(.system(size: 10))
-                    .foregroundColor(.textSecondary)
-            }
-
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("My Wealth")
-                        .font(.system(size: 12))
-                        .foregroundColor(.textSecondary)
+                    HStack {
+                        Text("My Wealth")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textSecondary)
+                        Text("•")
+                            .font(.system(size: 10))
+                            .foregroundColor(.textSecondary.opacity(0.5))
+                        Text(formatEntryDate(entry.date))
+                            .font(.system(size: 10))
+                            .foregroundColor(.brandAccent.opacity(0.8))
+                    }
 
                     Text(formatCurrency(entry.data.totalBalance))
                         .font(.system(size: 24, weight: .medium))
@@ -567,6 +810,8 @@ struct ExchangeWidgetEntryView: View {
                 }
             }
 
+            Spacer()
+
             // Chart
             MainChart(data: entry.data.chartData, isPositive: entry.data.change24hPercent >= 0)
                 .frame(height: 50)
@@ -578,17 +823,18 @@ struct ExchangeWidgetEntryView: View {
 
     var largeWidget: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // My Wealth label + Last updated
+            // My Wealth label with entry date for debug
             HStack {
                 Text("My Wealth")
                     .font(.system(size: 12))
                     .foregroundColor(.textSecondary)
-
-                Spacer()
-
-                Text(formatLastUpdated(entry.data.lastUpdated))
+                Text("•")
                     .font(.system(size: 10))
-                    .foregroundColor(.textSecondary)
+                    .foregroundColor(.textSecondary.opacity(0.5))
+                Text(formatEntryDate(entry.date))
+                    .font(.system(size: 10))
+                    .foregroundColor(.brandAccent.opacity(0.8))
+                Spacer()
             }
 
             // Balance
@@ -622,7 +868,7 @@ struct ExchangeWidgetEntryView: View {
 
             // Chart
             MainChart(data: entry.data.chartData, isPositive: entry.data.change24hPercent >= 0)
-                .frame(height: 45)
+                .frame(height: 75)
 
             // Spacer pushes Markets Watchlist to bottom
             Spacer()
@@ -655,19 +901,9 @@ struct ExchangeWidgetEntryView: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencySymbol = "$ "
+        formatter.roundingMode = .down  // Truncate instead of round
         formatter.maximumFractionDigits = value >= 1000 ? 0 : 2
         return formatter.string(from: NSNumber(value: value)) ?? "$ 0"
-    }
-
-    private func formatLastUpdated(_ isoString: String) -> String {
-        let isoFormatter = ISO8601DateFormatter()
-        guard let date = isoFormatter.date(from: isoString) else {
-            return ""
-        }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
     }
 }
 

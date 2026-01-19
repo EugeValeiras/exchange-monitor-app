@@ -17,16 +17,16 @@ class _AppScaffoldState extends State<AppScaffold> {
 
   final List<Widget> _screens = const [
     DashboardScreen(),
-    PricesScreen(),
     BalancesScreen(),
+    PricesScreen(),
     TransactionsScreen(),
   ];
 
   final List<_NavItem> _navItems = const [
     _NavItem(icon: Icons.dashboard, label: 'Dashboard'),
-    _NavItem(icon: Icons.show_chart, label: 'Precios'),
     _NavItem(icon: Icons.account_balance_wallet, label: 'Balances'),
-    _NavItem(icon: Icons.swap_horiz, label: 'Transacciones'),
+    _NavItem(icon: Icons.show_chart, label: 'Prices'),
+    _NavItem(icon: Icons.swap_horiz, label: 'Transactions'),
   ];
 
   @override

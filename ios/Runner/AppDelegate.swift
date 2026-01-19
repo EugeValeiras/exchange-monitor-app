@@ -40,6 +40,42 @@ import FirebaseMessaging
         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     }
 
+    // Handle silent push notifications (content-available)
+    override func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        print("[AppDelegate] Received remote notification: \(userInfo)")
+
+        // Check if this is a widget refresh notification with data
+        if #available(iOS 14.0, *) {
+            let defaults = UserDefaults(suiteName: "group.com.eugeniovaleiras.exchangeMonitor")
+
+            // Check for widgetData in the notification payload
+            if let widgetDataString = userInfo["widgetData"] as? String {
+                print("[AppDelegate] Found widgetData in push notification, saving to UserDefaults...")
+
+                // Save the widget data directly to App Group (same key Flutter uses)
+                defaults?.set(widgetDataString, forKey: "widgetData")
+                defaults?.set(Date().timeIntervalSince1970, forKey: "pushDataReceivedAt")
+                defaults?.synchronize()
+
+                print("[AppDelegate] Widget data saved from push notification")
+            }
+
+            // Save a refresh trigger timestamp
+            defaults?.set(Date().timeIntervalSince1970, forKey: "refreshTrigger")
+            defaults?.synchronize()
+
+            // Request widget reload
+            print("[AppDelegate] Reloading widget timelines...")
+            WidgetCenter.shared.reloadAllTimelines()
+            WidgetCenter.shared.reloadTimelines(ofKind: "ExchangeWidget")
+
+            print("[AppDelegate] Widget reload requested at \(Date())")
+        }
+
+        // Let Flutter handle the notification and call completion handler
+        super.application(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
+    }
+
     // Handle legacy background fetch
     override func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         // Refresh widget timeline

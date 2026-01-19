@@ -113,7 +113,7 @@ class BalanceChartWidget extends StatelessWidget {
                 final isLastPoint = index == timestamps.length - 1;
                 final date = index < timestamps.length ? timestamps[index] : DateTime.now();
                 return LineTooltipItem(
-                  isLastPoint ? 'Ahora' : DateFormat('dd/MM/yyyy HH:mm').format(date),
+                  isLastPoint ? 'Ahora' : DateFormat('dd/MM/yyyy HH:mm').format(date.toLocal()),
                   const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 12,

@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.eugeniovaleiras.exchangeMonitor.dev</string>
+	<string>com.eugeniovaleiras.exchangeMonitor</string>
 	<key>PROJECT_ID</key>
 	<string>exchange-monitor-ec0b8</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:6924367316:ios:1f5b48ec0aa09c25c01241</string>
+	<string>1:6924367316:ios:4d6947e5a0ecc931c01241</string>
 </dict>
 </plist>

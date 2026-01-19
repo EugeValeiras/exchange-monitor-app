@@ -1,13 +1,13 @@
 import 'core/config/app_config.dart';
 import 'main_common.dart';
 
-void main() {
+void main() async {
   AppConfig(
     flavor: Flavor.prod,
-    apiBaseUrl: 'https://api.exchange.eugeniovaleiras.com/api',
-    wsBaseUrl: 'wss://api.exchange.eugeniovaleiras.com',
-    appName: 'Exchange Monitor',
+    apiBaseUrl: 'http://192.168.0.172:3050/api',
+    wsBaseUrl: 'ws://192.168.0.172:3050',
+    appName: 'Exchange Monitor DEV',
   );
 
-  mainCommon();
+  await mainCommon();
 }
