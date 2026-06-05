@@ -1,0 +1,77 @@
+# Codemagic CI/CD — build iOS (flavor prod) y publicación a TestFlight
+# App: Exchange Monitor (Flutter) · App Store App ID: 6757874770
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+#
+# Requisitos en la UI de Codemagic:
+#  - App Store Connect API key cargada con el nombre: EUGENIO_VALEIRAS_STORE
+#  - Repo conectado: EugeValeiras/exchange-monitor-app
+
+workflows:
+  ios-testflight:
+    name: iOS → TestFlight (prod)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    integrations:
+      app_store_connect: EUGENIO_VALEIRAS_STORE
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.eugeniovaleiras.exchangeMonitor
+      vars:
+        APP_STORE_APP_ID: "6757874770"
+        BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $CM_BUILD_DIR/ios/Pods
+
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Configurar code signing (provisioning profiles)
+        script: xcode-project use-profiles
+
+      - name: Pod install
+        script: |
+          find . -name "Podfile" -execdir pod install \; || true
+
+      - name: Calcular build number (último de TestFlight + 1)
+        script: |
+          set -e
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo 0)
+          BUILD_NUMBER=$(( LATEST + 1 ))
+          echo "Último en TestFlight: $LATEST  ->  nuevo build: $BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$CM_ENV"
+
+      - name: Build IPA (release, flavor prod)
+        script: |
+          flutter build ipa --release \
+            --flavor prod \
+            -t lib/main_prod.dart \
+            --build-number="$BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # beta_groups:
+        #   - Internal Testers
+      email:
+        recipients:
+          - eugenio.valeiras@gmail.com
+        notify:
+          success: true
+          failure: true
