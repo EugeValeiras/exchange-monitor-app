@@ -17,6 +17,8 @@ workflows:
       app_store_connect: EUGENIO_VALEIRAS_STORE
 
     environment:
+      groups:
+        - ios_signing          # contiene CERTIFICATE_PRIVATE_KEY (var segura, cargada en la UI)
       vars:
         APP_STORE_APP_ID: "6757874770"
         BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor"
