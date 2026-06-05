@@ -33,7 +33,7 @@ workflows:
         APP_STORE_APP_ID: "6757874770"
         BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor"
         WIDGET_BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor.ExchangeWidget"
-      flutter: 3.41.6
+      flutter: 3.41.9
       xcode: latest
       cocoapods: default
 
