@@ -54,14 +54,21 @@ workflows:
         script: |
           set -e
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --platform IOS --type IOS_APP_STORE \
-            --certificate-key @env:CERTIFICATE_PRIVATE_KEY --create
+            --platform IOS --type IOS_APP_STORE --create
           app-store-connect fetch-signing-files "$WIDGET_BUNDLE_ID" \
-            --platform IOS --type IOS_APP_STORE \
-            --certificate-key @env:CERTIFICATE_PRIVATE_KEY --create
+            --platform IOS --type IOS_APP_STORE --create
+
+      - name: Crear certificado iOS Distribution
+        script: |
+          set -e
+          echo "$CERTIFICATE_PRIVATE_KEY" > /tmp/cert_key.pem
+          app-store-connect create-certificate \
+            --type IOS_DISTRIBUTION \
+            --private-key @file:/tmp/cert_key.pem
+          rm -f /tmp/cert_key.pem
 
       - name: Agregar certificados al keychain
-        script: keychain add-certificates --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+        script: keychain add-certificates
 
       - name: Aplicar provisioning profiles al proyecto Xcode
         script: xcode-project use-profiles
