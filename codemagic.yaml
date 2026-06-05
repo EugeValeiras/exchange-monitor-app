@@ -80,8 +80,15 @@ workflows:
           set -e
           LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo 0)
           BUILD_NUMBER=$(( LATEST + 1 ))
-          echo "Último en TestFlight: $LATEST  ->  nuevo build: $BUILD_NUMBER"
+          BUILD_NAME=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | cut -d'+' -f1)
+          echo "Último en TestFlight: $LATEST  ->  nuevo build: $BUILD_NUMBER (v$BUILD_NAME)"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$CM_ENV"
+          echo "BUILD_NAME=$BUILD_NAME" >> "$CM_ENV"
+          # Mismo motivo que FLUTTER_BUILD_DIR: el Info.plist resuelve
+          # $(FLUTTER_BUILD_NUMBER)/$(FLUTTER_BUILD_NAME) desde Generated.xcconfig,
+          # fuera de scope para el flavor → CFBundleVersion vacío y altool rechaza.
+          echo "FLUTTER_XCODE_FLUTTER_BUILD_NUMBER=$BUILD_NUMBER" >> "$CM_ENV"
+          echo "FLUTTER_XCODE_FLUTTER_BUILD_NAME=$BUILD_NAME" >> "$CM_ENV"
 
       - name: Build IPA (release, flavor prod)
         script: |
@@ -89,6 +96,7 @@ workflows:
             --flavor prod \
             -t lib/main_prod.dart \
             --build-number="$BUILD_NUMBER" \
+            --build-name="$BUILD_NAME" \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
