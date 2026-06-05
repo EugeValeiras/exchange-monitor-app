@@ -4,6 +4,7 @@
 #
 # Requisitos en la UI de Codemagic:
 #  - App Store Connect API key cargada con el nombre: EUGENIO_VALEIRAS_STORE
+#    (rol App Manager o Admin, para poder crear certificados/profiles)
 #  - Repo conectado: EugeValeiras/exchange-monitor-app
 
 workflows:
@@ -16,12 +17,10 @@ workflows:
       app_store_connect: EUGENIO_VALEIRAS_STORE
 
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.eugeniovaleiras.exchangeMonitor
       vars:
         APP_STORE_APP_ID: "6757874770"
         BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor"
+        WIDGET_BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor.ExchangeWidget"
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -35,8 +34,24 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      - name: Configurar code signing (provisioning profiles)
+      # --- Code signing manual (crea cert + profiles si faltan) ---
+      - name: Inicializar keychain
+        script: keychain initialize
+
+      - name: Fetch/crear signing files (app principal + widget)
+        script: |
+          set -e
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --platform IOS --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$WIDGET_BUNDLE_ID" \
+            --platform IOS --type IOS_APP_STORE --create
+
+      - name: Agregar certificados al keychain
+        script: keychain add-certificates
+
+      - name: Aplicar provisioning profiles al proyecto Xcode
         script: xcode-project use-profiles
+      # ------------------------------------------------------------
 
       - name: Pod install
         script: |
