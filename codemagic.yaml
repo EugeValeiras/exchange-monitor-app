@@ -54,12 +54,14 @@ workflows:
         script: |
           set -e
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --platform IOS --type IOS_APP_STORE --create
+            --platform IOS --type IOS_APP_STORE \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY --create
           app-store-connect fetch-signing-files "$WIDGET_BUNDLE_ID" \
-            --platform IOS --type IOS_APP_STORE --create
+            --platform IOS --type IOS_APP_STORE \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY --create
 
       - name: Agregar certificados al keychain
-        script: keychain add-certificates
+        script: keychain add-certificates --certificate-key @env:CERTIFICATE_PRIVATE_KEY
 
       - name: Aplicar provisioning profiles al proyecto Xcode
         script: xcode-project use-profiles
