@@ -33,7 +33,7 @@ workflows:
         APP_STORE_APP_ID: "6757874770"
         BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor"
         WIDGET_BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor.ExchangeWidget"
-      flutter: stable
+      flutter: 3.32.4
       xcode: latest
       cocoapods: default
 
@@ -45,18 +45,6 @@ workflows:
     scripts:
       - name: Flutter pub get
         script: flutter pub get
-
-      # google_fonts 6.x uses FontWeight as a const map key; newer Dart forbids
-      # this. Patch const → final before the build until upstream fixes it.
-      - name: Patch google_fonts FontWeight const map
-        script: |
-          VARIANT="$HOME/.pub-cache/hosted/pub.dev/google_fonts-6.2.1/lib/src/google_fonts_variant.dart"
-          if [ -f "$VARIANT" ]; then
-            sed -i '' 's/^const _fontWeightToFilenameWeightParts/final _fontWeightToFilenameWeightParts/' "$VARIANT"
-            echo "Patched google_fonts_variant.dart"
-          else
-            echo "WARNING: google_fonts_variant.dart not found at expected path"
-          fi
 
       # --- Code signing manual (crea cert + profiles si faltan) ---
       - name: Inicializar keychain
