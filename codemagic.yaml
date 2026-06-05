@@ -34,11 +34,15 @@ workflows:
         BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor"
         WIDGET_BUNDLE_ID: "com.eugeniovaleiras.exchangeMonitor.ExchangeWidget"
         # Las build configs de flavor (Release-prod) usan solo el xcconfig de
-        # CocoaPods como base y no incluyen Generated.xcconfig, así que
-        # FLUTTER_BUILD_DIR queda undefined y xcode_backend.dart crashea al
-        # embeber native assets. Flutter reenvía FLUTTER_XCODE_* a xcodebuild
-        # como build setting global, definiéndola en todas las fases.
+        # CocoaPods como base y no incluyen Generated.xcconfig, así que varias
+        # FLUTTER_* quedan undefined. Flutter reenvía FLUTTER_XCODE_* a xcodebuild
+        # como build setting global, definiéndolas en todas las fases.
+        #  - FLUTTER_BUILD_DIR: sin esto, crash en _embedNativeAssets.
+        #  - FLUTTER_TARGET: sin esto, el AOT cae al default lib/main.dart (flavor
+        #    dev → apiBaseUrl localhost) en vez de lib/main_prod.dart (raspi),
+        #    y la app falla el login con "No internet connection".
         FLUTTER_XCODE_FLUTTER_BUILD_DIR: build
+        FLUTTER_XCODE_FLUTTER_TARGET: lib/main_prod.dart
       flutter: 3.41.9
       xcode: latest
       cocoapods: default
