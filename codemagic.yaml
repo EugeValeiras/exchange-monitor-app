@@ -58,15 +58,6 @@ workflows:
           app-store-connect fetch-signing-files "$WIDGET_BUNDLE_ID" \
             --platform IOS --type IOS_APP_STORE --create
 
-      - name: Crear certificado iOS Distribution
-        script: |
-          set -e
-          echo "$CERTIFICATE_PRIVATE_KEY" > /tmp/cert_key.pem
-          app-store-connect create-certificate \
-            --type IOS_DISTRIBUTION \
-            --private-key @file:/tmp/cert_key.pem
-          rm -f /tmp/cert_key.pem
-
       - name: Agregar certificados al keychain
         script: keychain add-certificates
 
