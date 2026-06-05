@@ -11,6 +11,7 @@ import 'core/services/transaction_service.dart';
 import 'core/services/favorites_service.dart';
 import 'core/services/widget_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/passkey_service.dart';
 
 Future<void> mainCommon() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +70,9 @@ Future<void> mainCommon() async {
         ),
         ChangeNotifierProvider<NotificationService>.value(
           value: notificationService,
+        ),
+        ChangeNotifierProvider<PasskeyService>(
+          create: (_) => PasskeyService(apiService)..checkSupport(),
         ),
       ],
       child: const ExchangeMonitorApp(),

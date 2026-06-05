@@ -106,4 +106,22 @@ class AuthService extends ChangeNotifier {
   Future<String?> getStoredToken() async {
     return await _storage.read(key: _tokenKey);
   }
+
+  Future<User> loginWithPasskey(Map<String, dynamic> tokenResponse) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = TokenResponse.fromJson(tokenResponse);
+      await _storage.write(key: _tokenKey, value: response.accessToken);
+      _apiService.setAuthToken(response.accessToken);
+
+      await _fetchCurrentUser();
+
+      return _currentUser!;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

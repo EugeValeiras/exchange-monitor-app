@@ -10,6 +10,8 @@ import '../../../core/services/widget_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/balance_chart.dart';
 import '../widgets/price_cards.dart';
+import '../../settings/screens/notification_settings_screen.dart';
+import '../../settings/screens/passkey_settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -198,6 +200,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 24),
                 const Divider(color: AppColors.border),
                 const SizedBox(height: 8),
+
+                // Notifications
+                ListTile(
+                  leading: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+                  title: const Text('Notificaciones'),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+                    );
+                  },
+                ),
+
+                // Passkeys
+                ListTile(
+                  leading: const Icon(Icons.fingerprint, color: AppColors.textPrimary),
+                  title: const Text('Passkeys'),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PasskeySettingsScreen()),
+                    );
+                  },
+                ),
+
+                const Divider(color: AppColors.border),
 
                 // Logout button
                 ListTile(

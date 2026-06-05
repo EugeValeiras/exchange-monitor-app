@@ -2,7 +2,7 @@ name: exchange_monitor
 description: "Exchange Monitor - Track your crypto portfolio"
 publish_to: 'none'
 
-version: 1.0.0+30
+version: 1.0.0+36
 
 environment:
   sdk: ^3.5.4
@@ -37,6 +37,9 @@ dependencies:
   equatable: ^2.0.5
   json_annotation: ^4.9.0
   package_info_plus: ^8.0.0
+
+  # Passkeys/WebAuthn
+  passkeys: ^2.17.4
 
   # iOS Widget
   home_widget: ^0.7.0

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/balance_service.dart';
 import '../../../core/services/price_service.dart';
+import '../../../core/services/transaction_service.dart';
 import '../../../core/services/favorites_service.dart';
 import '../../../core/models/balance.dart';
 import '../../../core/utils/formatters.dart';
@@ -106,6 +107,7 @@ class _BalancesScreenState extends State<BalancesScreen> {
   Widget build(BuildContext context) {
     final balanceService = context.watch<BalanceService>();
     final priceService = context.watch<PriceService>();
+    final transactionService = context.watch<TransactionService>();
 
     // Get exchange names list
     final exchangeNames = balanceService.exchanges.map((e) => e.exchange).toList();
@@ -130,6 +132,7 @@ class _BalancesScreenState extends State<BalancesScreen> {
                       totalValue: _getFilteredTotalValue(balanceService),
                       change24h: filteredChange.changePercent,
                       changeUsd24h: filteredChange.changeUsd,
+                      totalInterestUsd: transactionService.stats?.totalInterestUsd,
                       hideSmallBalances: _hideSmallBalances,
                       onToggleSmallBalances: () => setState(() => _hideSmallBalances = !_hideSmallBalances),
                     ),
@@ -240,6 +243,7 @@ class _TotalBalanceHeader extends StatelessWidget {
   final double totalValue;
   final double? change24h;
   final double? changeUsd24h;
+  final double? totalInterestUsd;
   final bool hideSmallBalances;
   final VoidCallback onToggleSmallBalances;
 
@@ -249,6 +253,7 @@ class _TotalBalanceHeader extends StatelessWidget {
     required this.onToggleSmallBalances,
     this.change24h,
     this.changeUsd24h,
+    this.totalInterestUsd,
   });
 
   @override
@@ -325,6 +330,36 @@ class _TotalBalanceHeader extends StatelessWidget {
               PriceChange(
                 changeUsd: changeUsd24h,
                 changePercent: change24h,
+              ),
+          ],
+          if (totalInterestUsd != null && totalInterestUsd! > 0) ...[
+            const SizedBox(height: 12),
+            if (hideSmallBalances)
+              const Text(
+                '••••••',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              )
+            else
+              Row(
+                children: [
+                  const Icon(
+                    Icons.savings,
+                    size: 16,
+                    color: Colors.white70,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Intereses: ${currencyFormat.format(totalInterestUsd)}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
           ],
         ],

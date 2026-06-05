@@ -4,9 +4,9 @@ import 'main_common.dart';
 void main() async {
   AppConfig(
     flavor: Flavor.prod,
-    apiBaseUrl: 'http://192.168.0.172:3050/api',
-    wsBaseUrl: 'ws://192.168.0.172:3050',
-    appName: 'Exchange Monitor DEV',
+    apiBaseUrl: 'https://api.exchange.eugeniovaleiras.com/api',
+    wsBaseUrl: 'wss://api.exchange.eugeniovaleiras.com',
+    appName: 'Exchange Monitor',
   );
 
   await mainCommon();

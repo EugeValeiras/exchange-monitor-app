@@ -10,6 +10,7 @@ class AssetBalance extends Equatable {
   final double? change24h;
   final List<String> exchanges;
   final List<ExchangeBreakdown>? exchangeBreakdown;
+  final double? avgBuyPriceUsdt;
 
   const AssetBalance({
     required this.asset,
@@ -21,6 +22,7 @@ class AssetBalance extends Equatable {
     this.change24h,
     this.exchanges = const [],
     this.exchangeBreakdown,
+    this.avgBuyPriceUsdt,
   });
 
   factory AssetBalance.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,7 @@ class AssetBalance extends Equatable {
       exchangeBreakdown: (json['exchangeBreakdown'] as List<dynamic>?)
           ?.map((e) => ExchangeBreakdown.fromJson(e as Map<String, dynamic>))
           .toList(),
+      avgBuyPriceUsdt: (json['avgBuyPriceUsdt'] as num?)?.toDouble(),
     );
   }
 
@@ -52,6 +55,7 @@ class AssetBalance extends Equatable {
         valueUsd,
         change24h,
         exchanges,
+        avgBuyPriceUsdt,
       ];
 }
 
