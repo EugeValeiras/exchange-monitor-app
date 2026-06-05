@@ -13,6 +13,16 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
 
+    # Dispara el build automáticamente en cada push a main
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+      cancel_previous_builds: true
+
     integrations:
       app_store_connect: EUGENIO_VALEIRAS_STORE
 
