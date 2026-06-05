@@ -12,6 +12,9 @@ import 'core/services/favorites_service.dart';
 import 'core/services/widget_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/passkey_service.dart';
+import 'core/services/agent_chat_service.dart';
+import 'core/services/agent_threads_service.dart';
+import 'features/agent/providers/chat_controller.dart';
 
 Future<void> mainCommon() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,6 +76,12 @@ Future<void> mainCommon() async {
         ),
         ChangeNotifierProvider<PasskeyService>(
           create: (_) => PasskeyService(apiService)..checkSupport(),
+        ),
+        ChangeNotifierProvider<ChatController>(
+          create: (_) => ChatController(
+            AgentChatService(apiService),
+            AgentThreadsService(apiService),
+          ),
         ),
       ],
       child: const ExchangeMonitorApp(),

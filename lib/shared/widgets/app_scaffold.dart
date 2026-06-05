@@ -4,6 +4,7 @@ import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/prices/screens/prices_screen.dart';
 import '../../features/balances/screens/balances_screen.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
+import '../../features/agent/screens/agent_screen.dart';
 
 class AppScaffold extends StatefulWidget {
   const AppScaffold({super.key});
@@ -20,6 +21,7 @@ class _AppScaffoldState extends State<AppScaffold> {
     BalancesScreen(),
     PricesScreen(),
     TransactionsScreen(),
+    AgentScreen(),
   ];
 
   final List<_NavItem> _navItems = const [
@@ -27,6 +29,7 @@ class _AppScaffoldState extends State<AppScaffold> {
     _NavItem(icon: Icons.account_balance_wallet, label: 'Balances'),
     _NavItem(icon: Icons.show_chart, label: 'Prices'),
     _NavItem(icon: Icons.swap_horiz, label: 'Transactions'),
+    _NavItem(icon: Icons.smart_toy_outlined, label: 'Agente'),
   ];
 
   @override
