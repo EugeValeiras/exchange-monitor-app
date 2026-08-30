@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/em_tokens.dart';
+import '../../features/agent/screens/agent_screen.dart';
 import '../../features/market/screens/market_screen.dart';
 import '../../features/movements/screens/movements_screen.dart';
 import '../../features/position/screens/position_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 
-/// Cuatro destinos reales.
+/// Cinco destinos.
 ///
 /// Antes eran Dashboard, Balances, Prices y Transactions: las dos primeras
 /// mostraban la misma tarjeta y casi los mismos datos, y no había ningún lugar
-/// para los ajustes. Al fusionarlas se libera la pestaña que faltaba.
+/// para los ajustes. Al fusionarlas entra el Agente sin llegar a seis pestañas.
 class AppScaffold extends StatefulWidget {
   const AppScaffold({super.key});
 
@@ -25,6 +26,7 @@ class _AppScaffoldState extends State<AppScaffold> {
     (icon: Icons.show_chart, label: 'Posición'),
     (icon: Icons.swap_horiz, label: 'Movimientos'),
     (icon: Icons.bar_chart, label: 'Mercado'),
+    (icon: Icons.chat_bubble_outline, label: 'Agente'),
     (icon: Icons.settings_outlined, label: 'Ajustes'),
   ];
 
@@ -37,6 +39,7 @@ class _AppScaffoldState extends State<AppScaffold> {
           PositionScreen(),
           MovementsScreen(),
           MarketScreen(),
+          AgentScreen(),
           SettingsScreen(),
         ],
       ),
@@ -49,7 +52,7 @@ class _AppScaffoldState extends State<AppScaffold> {
           top: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: EmSpace.md,
+              horizontal: EmSpace.sm,
               vertical: EmSpace.sm + 2,
             ),
             child: Row(
@@ -70,10 +73,15 @@ class _AppScaffoldState extends State<AppScaffold> {
                                 : EmColors.textTertiary,
                           ),
                           const SizedBox(height: EmSpace.xs + 1),
+                          // Con cinco destinos el ancho por pestaña baja a ~78 pt:
+                          // "Movimientos" entra recién a 10 px.
                           Text(
                             _tabs[i].label,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
                             style: EmText.meta.copyWith(
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight:
                                   i == _index ? FontWeight.w600 : FontWeight.w500,
                               color: i == _index

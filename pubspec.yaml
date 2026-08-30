@@ -30,10 +30,14 @@ dependencies:
   fl_chart: ^0.69.0
 
   # UI
-  google_fonts: ^6.2.1
+  google_fonts: ^8.1.0
   flutter_svg: ^2.0.10+1
   shimmer: ^3.0.0
-  intl: ^0.20.2
+  # `any`: flutter_localizations pinnea intl a la versión que trae el SDK, y el
+  # CI (Flutter 3.41.9) no usa la misma que una máquina local. Fijarlo acá hace
+  # fallar la resolución en uno de los dos lados.
+  intl: any
+  flutter_markdown: ^0.7.4+1
 
   # Utils
   equatable: ^2.0.5

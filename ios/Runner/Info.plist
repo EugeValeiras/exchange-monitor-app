@@ -2,6 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<!-- ATS: permitir HTTP en texto plano hacia la API de la raspi (Tailscale, sin TLS).
+		     La IP Tailscale no entra en excepciones por dominio, por eso NSAllowsArbitraryLoads. -->
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<true/>
+		</dict>
+		<!-- Red local: iOS clasifica la IP de Tailscale (rango privado 100.x) como red
+		     local y bloquea la conexión sin este permiso. Sin la usage description ni
+		     siquiera aparece el toggle en Ajustes y la app falla con connectionError. -->
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>Exchange Monitor se conecta a tu servidor en la red local/Tailscale para mostrar balances y precios.</string>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
