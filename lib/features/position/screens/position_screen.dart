@@ -62,8 +62,19 @@ class _PositionScreenState extends State<PositionScreen> {
     // estuvieras mirando un año.
     final start = chart.startValue;
     final current = balance.totalValueUsd;
-    final shown = _scrubbed?.value ?? current;
-    final deltaUsd = (start != null && start > 0) ? shown - start : null;
+    final scrubbed = _scrubbed;
+    final shown = scrubbed?.value ?? current;
+
+    // El delta siempre se lee HACIA ADELANTE en el tiempo, desde una base hasta
+    // un extremo:
+    //  - sin tocar el gráfico, del inicio del período hasta ahora;
+    //  - tocando un punto, DESDE ese punto hasta ahora — que es lo que uno
+    //    quiere saber al mirar el pasado ("tenía esto, ahora tengo esto otro").
+    // Medirlo al revés hacía que tocar un mínimo de hace un mes mostrara una
+    // flecha roja aunque desde entonces la cartera hubiera subido.
+    final base = scrubbed?.value ?? start;
+    final head = scrubbed != null ? current : shown;
+    final deltaUsd = (base != null && base > 0) ? head - base : null;
 
     // El porcentaje sólo se muestra cuando SIGNIFICA algo. Si en el período
     // entró o salió capital, el rendimiento sobre una base que cambió por
@@ -71,8 +82,8 @@ class _PositionScreenState extends State<PositionScreen> {
     // casi todo plata puesta, no ganada. En ese caso va sólo la variación
     // absoluta, y el aviso de abajo explica por qué.
     final hasCapitalMoves = chart.capitalEvents.isNotEmpty;
-    final deltaPercent = (!hasCapitalMoves && start != null && start > 0)
-        ? (shown - start) / start * 100
+    final deltaPercent = (!hasCapitalMoves && base != null && base > 0)
+        ? (head - base) / base * 100
         : null;
 
     return Scaffold(
@@ -196,7 +207,7 @@ class _PositionScreenState extends State<PositionScreen> {
             Flexible(
               child: Text(
                 _scrubbed != null
-                    ? formatDateTimeShort(_scrubbed!.timestamp)
+                    ? 'desde el ${formatDateTimeShort(_scrubbed!.timestamp)}'
                     : percentHidden
                         ? '${timeframe.sinceLabel}, con aportes'
                         : timeframe.sinceLabel,
