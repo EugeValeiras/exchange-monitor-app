@@ -344,7 +344,7 @@ class _ChartPainter extends CustomPainter {
     double xAt(int i) => plotLeft + (i / (points.length - 1)) * plotWidth;
     double yAt(double v) => (1 - domain.normalize(v)) * plotHeight;
 
-    _paintScale(canvas, size, plotHeight);
+    _paintScaleLines(canvas, size, plotHeight);
 
     // Sólo las lecturas dentro del dominio entran en el dibujo: una atípica se
     // saltea y la línea une los vecinos.
@@ -401,9 +401,11 @@ class _ChartPainter extends CustomPainter {
     if (activeIndex != null && activeIndex! >= 0 && activeIndex! < points.length) {
       _paintCrosshair(canvas, xAt(activeIndex!), yAt(points[activeIndex!].value), plotHeight);
     }
+
+    _paintScaleLabels(canvas, plotHeight);
   }
 
-  void _paintScale(Canvas canvas, Size size, double plotHeight) {
+  void _paintScaleLines(Canvas canvas, Size size, double plotHeight) {
     final hairline = Paint()
       ..color = EmColors.strokeSoft
       ..strokeWidth = 1;
@@ -414,11 +416,14 @@ class _ChartPainter extends CustomPainter {
       Offset(size.width, plotHeight - 1),
       hairline,
     );
+  }
 
-    // Las etiquetas muestran el rango DIBUJADO, no el mínimo y máximo crudos:
-    // el gráfico no puede prometer una escala que no está usando. Van dentro
-    // del área, apoyadas en su línea: con el trazo a todo lo ancho ya no hay
-    // una columna al costado donde ponerlas.
+  /// Las etiquetas muestran el rango DIBUJADO, no el mínimo y máximo crudos: el
+  /// gráfico no puede prometer una escala que no está usando. Van dentro del
+  /// área —con el trazo a todo lo ancho no hay una columna al costado— y se
+  /// pintan AL FINAL, encima de la serie: si no, la línea las cruzaba y el
+  /// número quedaba cortado por la mitad.
+  void _paintScaleLabels(Canvas canvas, double plotHeight) {
     _paintText(canvas, formatCompactMoney(domain.max), Offset(inset, 3));
     _paintText(
       canvas,
@@ -515,7 +520,18 @@ class _ChartPainter extends CustomPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: EmText.meta.copyWith(color: EmColors.textMuted, fontSize: 11),
+        style: EmText.meta.copyWith(
+          color: EmColors.textMuted,
+          fontSize: 11,
+          // Halo del color del lienzo: con el trazo a todo lo ancho las
+          // etiquetas de escala viven DENTRO del área, y cuando la serie pasa
+          // por su altura el número quedaba cortado por la línea.
+          shadows: const [
+            Shadow(color: EmColors.bg, blurRadius: 4),
+            Shadow(color: EmColors.bg, blurRadius: 4),
+            Shadow(color: EmColors.bg, blurRadius: 2),
+          ],
+        ),
       ),
       textDirection: textDirection,
     )..layout();
