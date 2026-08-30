@@ -161,7 +161,7 @@ class _MovementsScreenState extends State<MovementsScreen> {
           child: EmStat(
             value: stats?.totalInterestUsd == null
                 ? '—'
-                : formatSignedMoney(stats!.totalInterestUsd!, decimals: 0),
+                : formatSignedUsd(stats!.totalInterestUsd!, decimals: 0),
             label: 'intereses',
             valueColor: stats?.totalInterestUsd == null ? null : EmColors.up,
           ),
@@ -173,7 +173,7 @@ class _MovementsScreenState extends State<MovementsScreen> {
             // decir "—" es honesto, mostrar 0 no lo sería.
             value: stats?.totalFeesUsd == null
                 ? '—'
-                : formatSignedMoney(-stats!.totalFeesUsd!.abs(), decimals: 0),
+                : formatSignedUsd(-stats!.totalFeesUsd!.abs(), decimals: 0),
             label: 'comisiones',
             valueColor: stats?.totalFeesUsd == null ? null : EmColors.down,
           ),

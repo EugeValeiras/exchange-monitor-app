@@ -278,7 +278,7 @@ class _PositionScreenState extends State<PositionScreen> {
           children: [
             Expanded(
               child: EmStat(
-                value: _hideValues ? '••••' : formatSignedMoney(pnl.totalPnl, decimals: 0),
+                value: _hideValues ? '••••' : formatSignedUsd(pnl.totalPnl, decimals: 0),
                 label: 'P&L total',
                 valueColor: EmDelta.colorFor(pnl.totalPnl),
               ),
@@ -288,7 +288,7 @@ class _PositionScreenState extends State<PositionScreen> {
               child: EmStat(
                 value: _hideValues
                     ? '••••'
-                    : formatSignedMoney(pnl.unrealizedPnl, decimals: 0),
+                    : formatSignedUsd(pnl.unrealizedPnl, decimals: 0),
                 label: 'no realizado',
                 valueColor: EmDelta.colorFor(pnl.unrealizedPnl),
               ),
@@ -300,7 +300,7 @@ class _PositionScreenState extends State<PositionScreen> {
                     ? '—'
                     : _hideValues
                         ? '••••'
-                        : formatSignedMoney(interest, decimals: 0),
+                        : formatSignedUsd(interest, decimals: 0),
                 label: 'intereses',
                 valueColor: interest == null ? null : EmColors.up,
               ),

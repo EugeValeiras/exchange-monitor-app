@@ -35,6 +35,16 @@ String formatSignedMoney(double value, {int decimals = 2}) {
   return '$sign${formatMoney(value.abs(), decimals: decimals)}';
 }
 
+/// Monto con signo y símbolo: "+$1.234,56" / "−$1.234,56".
+///
+/// Para un número que aparece SOLO, sin una columna de valores que lo
+/// contextualice: sin el símbolo, "+301" se lee tan fácil como un porcentaje o
+/// un conteo. En listas alineadas a la derecha alcanza con [formatSignedMoney].
+String formatSignedUsd(double value, {int decimals = 2}) {
+  final sign = value < 0 ? kMinus : '+';
+  return '$sign\$${formatMoney(value.abs(), decimals: decimals)}';
+}
+
 /// Porcentaje con signo: "+2,50%" / "−2,50%".
 String formatSignedPercent(double value, {int decimals = 2}) {
   final sign = value < 0 ? kMinus : '+';

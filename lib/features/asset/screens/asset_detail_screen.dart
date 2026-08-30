@@ -284,7 +284,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            value == null ? '—' : formatSignedMoney(value),
+            value == null ? '—' : formatSignedUsd(value),
             style: EmText.headline.copyWith(color: EmDelta.colorFor(value)),
           ),
           const SizedBox(height: 3),
