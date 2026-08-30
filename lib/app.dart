@@ -70,32 +70,40 @@ class _ExchangeMonitorAppState extends State<ExchangeMonitorApp>
     if (_servicesInitialized) return;
     _servicesInitialized = true;
 
+    // Todo lo que se lee del árbol se resuelve ACÁ, antes del primer await:
+    // después de uno, el context puede estar desmontado.
     final authService = context.read<AuthService>();
+    final priceService = context.read<PriceService>();
+    final balanceService = context.read<BalanceService>();
+    final chartService = context.read<ChartService>();
+    final favoritesService = context.read<FavoritesService>();
+    final pnlService = context.read<PnlService>();
+    final transactionService = context.read<TransactionService>();
+    final notifications = context.read<NotificationService>();
+
     final token = await authService.getStoredToken();
     if (token == null) return;
 
     await WidgetService.saveAuthToken(token);
 
-    final priceService = context.read<PriceService>();
     priceService.setAuthToken(token);
     priceService.connect();
 
     await Future.wait([
-      context.read<BalanceService>().loadBalance(),
-      context.read<ChartService>().loadChartData(),
-      context.read<FavoritesService>().loadFavorites(),
-      context.read<PnlService>().load(),
+      balanceService.loadBalance(),
+      chartService.loadChartData(),
+      favoritesService.loadFavorites(),
+      pnlService.load(),
     ]);
 
     if (!mounted) return;
-    context.read<TransactionService>().refresh();
+    transactionService.refresh();
 
     // El permiso de notificaciones NO se pide acá: interrumpía el primer
     // render con una hoja modal antes de que el usuario llegara a ver su
     // cartera, y prometía ajustes ("horarios", "umbral") que la pantalla real
     // no tenía. Se pide en Ajustes → Notificaciones, donde el contexto lo
     // justifica y los controles están a la vista.
-    final notifications = context.read<NotificationService>();
     if (notifications.hasPermission) {
       await notifications.registerTokenAfterLogin();
     }

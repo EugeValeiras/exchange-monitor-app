@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/models/transaction.dart';
 import '../../../core/services/transaction_service.dart';
 import '../../../core/theme/em_tokens.dart';
 import '../../../core/utils/formatters.dart';

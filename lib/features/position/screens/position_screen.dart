@@ -82,26 +82,26 @@ class _PositionScreenState extends State<PositionScreen> {
           onRefresh: _load,
           color: EmColors.textPrimary,
           backgroundColor: EmColors.surface,
+          // El padding lateral lo pone cada bloque, no la lista: así el
+          // gráfico puede llegar a los dos bordes de la pantalla.
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
-              EmSpace.screen,
-              EmSpace.xs,
-              EmSpace.screen,
-              EmSpace.xxl,
+            padding: const EdgeInsets.only(
+              top: EmSpace.xs,
+              bottom: EmSpace.xxl,
             ),
             children: [
-              _header(context),
+              _padded(_header(context)),
               const SizedBox(height: EmSpace.md + 2),
-              _total(
+              _padded(_total(
                 shown,
                 deltaUsd,
                 deltaPercent,
                 chart.selectedTimeframe,
                 percentHidden: hasCapitalMoves,
-              ),
+              )),
               const SizedBox(height: EmSpace.lg + 2),
-              _periodPicker(chart),
+              _padded(_periodPicker(chart)),
               const SizedBox(height: EmSpace.lg),
               EmBalanceChart(
                 points: chart.getChartPoints(),
@@ -110,15 +110,20 @@ class _PositionScreenState extends State<PositionScreen> {
                 onScrub: (point) => setState(() => _scrubbed = point),
               ),
               const SizedBox(height: EmSpace.xl),
-              _result(context),
+              _padded(_result(context)),
               const SizedBox(height: EmSpace.xl - 2),
-              _assets(context, balance),
+              _padded(_assets(context, balance)),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _padded(Widget child) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: EmSpace.screen),
+        child: child,
+      );
 
   Widget _header(BuildContext context) {
     return Row(

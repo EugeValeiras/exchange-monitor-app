@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -129,14 +130,15 @@ class EmBalanceChart extends StatefulWidget {
 class _EmBalanceChartState extends State<EmBalanceChart> {
   int? _activeIndex;
 
-  static const double _labelGutter = 56;
+  /// El trazo llega a los dos bordes de la pantalla; este margen es sólo para
+  /// que las etiquetas de escala y de tiempo no queden pegadas al canto.
+  static const double _inset = EmSpace.screen;
 
   void _updateFromPosition(double dx, double width) {
     if (widget.points.length < 2) return;
-    final plotWidth = width - _labelGutter;
-    if (plotWidth <= 0) return;
+    if (width <= 0) return;
 
-    final ratio = ((dx - _labelGutter) / plotWidth).clamp(0.0, 1.0);
+    final ratio = (dx / width).clamp(0.0, 1.0);
     final index = (ratio * (widget.points.length - 1)).round();
     if (index == _activeIndex) return;
 
@@ -178,19 +180,54 @@ class _EmBalanceChartState extends State<EmBalanceChart> {
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
-            // Mantener presionado para inspeccionar, como en cualquier app de
-            // finanzas. Un drag horizontal suelto no sirve acá: el gráfico vive
-            // dentro de una lista que scrollea, y el reconocedor de scroll gana
-            // la arena antes de que el gesto llegue. El long press la gana sin
-            // robarle el scroll vertical al resto de la pantalla.
-            return GestureDetector(
+            final width = constraints.maxWidth;
+
+            // Dos formas de recorrerlo: arrastrando el dedo, o manteniendo
+            // presionado. Se declaran como reconocedores propios porque el
+            // gráfico vive dentro de una lista que scrollea — con un
+            // GestureDetector común el scroll vertical se queda con el gesto
+            // antes de que llegue acá. El de arrastre horizontal compite por
+            // dirección y gana en cuanto el dedo se mueve de costado.
+            return RawGestureDetector(
               behavior: HitTestBehavior.opaque,
-              onLongPressStart: (d) =>
-                  _updateFromPosition(d.localPosition.dx, constraints.maxWidth),
-              onLongPressMoveUpdate: (d) =>
-                  _updateFromPosition(d.localPosition.dx, constraints.maxWidth),
-              onLongPressEnd: (_) => _end(),
-              onLongPressCancel: _end,
+              gestures: <Type, GestureRecognizerFactory>{
+                HorizontalDragGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<
+                        HorizontalDragGestureRecognizer>(
+                  HorizontalDragGestureRecognizer.new,
+                  (instance) {
+                    instance
+                      ..onStart = (d) {
+                        _updateFromPosition(d.localPosition.dx, width);
+                      }
+                      ..onUpdate = (d) {
+                        _updateFromPosition(d.localPosition.dx, width);
+                      }
+                      ..onEnd = (_) {
+                        _end();
+                      }
+                      ..onCancel = _end;
+                  },
+                ),
+                LongPressGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<
+                        LongPressGestureRecognizer>(
+                  LongPressGestureRecognizer.new,
+                  (instance) {
+                    instance
+                      ..onLongPressStart = (d) {
+                        _updateFromPosition(d.localPosition.dx, width);
+                      }
+                      ..onLongPressMoveUpdate = (d) {
+                        _updateFromPosition(d.localPosition.dx, width);
+                      }
+                      ..onLongPressEnd = (_) {
+                        _end();
+                      }
+                      ..onLongPressCancel = _end;
+                  },
+                ),
+              },
               child: SizedBox(
                 height: widget.height,
                 width: double.infinity,
@@ -201,7 +238,7 @@ class _EmBalanceChartState extends State<EmBalanceChart> {
                     color: color,
                     activeIndex: _activeIndex,
                     capitalEvents: widget.capitalEvents,
-                    labelGutter: _labelGutter,
+                    inset: _inset,
                     textDirection: Directionality.of(context),
                   ),
                 ),
@@ -211,7 +248,7 @@ class _EmBalanceChartState extends State<EmBalanceChart> {
         ),
         const SizedBox(height: EmSpace.sm - 1),
         Padding(
-          padding: const EdgeInsets.only(left: _labelGutter),
+          padding: const EdgeInsets.symmetric(horizontal: _inset),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -222,7 +259,11 @@ class _EmBalanceChartState extends State<EmBalanceChart> {
         ),
         if (widget.footnote != null || domain.clippedCount > 0)
           Padding(
-            padding: const EdgeInsets.only(top: EmSpace.sm + 2),
+            padding: const EdgeInsets.only(
+              top: EmSpace.sm + 2,
+              left: _inset,
+              right: _inset,
+            ),
             child: Row(
               children: [
                 if (widget.capitalEvents.isNotEmpty) ...[
@@ -275,7 +316,9 @@ class _ChartPainter extends CustomPainter {
   final Color color;
   final int? activeIndex;
   final List<CapitalEvent> capitalEvents;
-  final double labelGutter;
+
+  /// Margen para el TEXTO. El trazo no lo usa: va de borde a borde.
+  final double inset;
   final TextDirection textDirection;
 
   const _ChartPainter({
@@ -284,14 +327,14 @@ class _ChartPainter extends CustomPainter {
     required this.color,
     required this.activeIndex,
     required this.capitalEvents,
-    required this.labelGutter,
+    required this.inset,
     required this.textDirection,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final plotLeft = labelGutter;
-    final plotWidth = size.width - plotLeft;
+    const plotLeft = 0.0;
+    final plotWidth = size.width;
     if (plotWidth <= 0) return;
 
     // Espacio reservado abajo para las marcas de capital sobre el eje.
@@ -301,7 +344,7 @@ class _ChartPainter extends CustomPainter {
     double xAt(int i) => plotLeft + (i / (points.length - 1)) * plotWidth;
     double yAt(double v) => (1 - domain.normalize(v)) * plotHeight;
 
-    _paintScale(canvas, size, plotLeft, plotHeight);
+    _paintScale(canvas, size, plotHeight);
 
     // Sólo las lecturas dentro del dominio entran en el dibujo: una atípica se
     // saltea y la línea une los vecinos.
@@ -325,7 +368,7 @@ class _ChartPainter extends CustomPainter {
       area,
       Paint()
         ..shader = ui.Gradient.linear(
-          Offset(0, 0),
+          const Offset(0, 0),
           Offset(0, plotHeight),
           [color.withValues(alpha: 0.16), color.withValues(alpha: 0.0)],
         ),
@@ -360,22 +403,28 @@ class _ChartPainter extends CustomPainter {
     }
   }
 
-  void _paintScale(Canvas canvas, Size size, double plotLeft, double plotHeight) {
+  void _paintScale(Canvas canvas, Size size, double plotHeight) {
     final hairline = Paint()
       ..color = EmColors.strokeSoft
       ..strokeWidth = 1;
 
-    canvas.drawLine(Offset(plotLeft, 0), Offset(size.width, 0), hairline);
+    canvas.drawLine(const Offset(0, 0), Offset(size.width, 0), hairline);
     canvas.drawLine(
-      Offset(plotLeft, plotHeight - 1),
+      Offset(0, plotHeight - 1),
       Offset(size.width, plotHeight - 1),
       hairline,
     );
 
     // Las etiquetas muestran el rango DIBUJADO, no el mínimo y máximo crudos:
-    // el gráfico no puede prometer una escala que no está usando.
-    _paintText(canvas, formatCompactMoney(domain.max), const Offset(0, -5));
-    _paintText(canvas, formatCompactMoney(domain.min), Offset(0, plotHeight - 12));
+    // el gráfico no puede prometer una escala que no está usando. Van dentro
+    // del área, apoyadas en su línea: con el trazo a todo lo ancho ya no hay
+    // una columna al costado donde ponerlas.
+    _paintText(canvas, formatCompactMoney(domain.max), Offset(inset, 3));
+    _paintText(
+      canvas,
+      formatCompactMoney(domain.min),
+      Offset(inset, plotHeight - 17),
+    );
   }
 
   /// Cuántas marcas caben sin que el eje se vuelva una franja. Con un año de

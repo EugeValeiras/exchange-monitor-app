@@ -12,7 +12,7 @@ import 'em_tokens.dart';
 /// Ver [EmColors] para la dirección de diseño.
 abstract final class EmTheme {
   static ThemeData dark() {
-    final scheme = ColorScheme.dark(
+    const scheme = ColorScheme.dark(
       // El "primario" del sistema es una superficie clara, no un color de
       // marca: en esta app seleccionar es aclarar, no teñir.
       primary: EmColors.textPrimary,
