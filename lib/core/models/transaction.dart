@@ -1,5 +1,12 @@
 import 'package:equatable/equatable.dart';
 
+import '../utils/formatters.dart';
+
+/// Hacia dónde se mueve la plata. Es lo que decide el signo y el color de un
+/// movimiento: antes el monto se pintaba según `isPositive`, y por eso un
+/// retiro salía en verde con un "+" adelante, idéntico a un depósito.
+enum TransactionDirection { inflow, outflow, neutral }
+
 enum TransactionType {
   deposit,
   withdrawal,
@@ -13,19 +20,26 @@ extension TransactionTypeExtension on TransactionType {
   String get label {
     switch (this) {
       case TransactionType.deposit:
-        return 'Deposito';
+        return 'Depósito';
       case TransactionType.withdrawal:
         return 'Retiro';
       case TransactionType.trade:
-        return 'Trade';
+        return 'Operación';
       case TransactionType.interest:
-        return 'Interes';
+        return 'Intereses';
       case TransactionType.fee:
-        return 'Comision';
+        return 'Comisión';
       case TransactionType.transfer:
         return 'Transferencia';
     }
   }
+
+  /// Un depósito y un retiro son CAPITAL, no resultado: por eso no se pintan
+  /// de verde ni de rojo, que están reservados para variación de valor.
+  bool get isCapitalFlow =>
+      this == TransactionType.deposit ||
+      this == TransactionType.withdrawal ||
+      this == TransactionType.transfer;
 
   static TransactionType fromString(String value) {
     switch (value.toLowerCase()) {
@@ -80,10 +94,51 @@ class Transaction extends Equatable {
 
   bool get isBuy => side?.toLowerCase() == 'buy';
   bool get isSell => side?.toLowerCase() == 'sell';
-  bool get isPositive =>
-      type == TransactionType.deposit ||
-      type == TransactionType.interest ||
-      isBuy;
+
+  /// Dirección real del movimiento. Para una operación manda el lado; para el
+  /// resto, el tipo. Una transferencia se resuelve por el signo del monto.
+  TransactionDirection get direction {
+    switch (type) {
+      case TransactionType.deposit:
+      case TransactionType.interest:
+        return TransactionDirection.inflow;
+      case TransactionType.withdrawal:
+      case TransactionType.fee:
+        return TransactionDirection.outflow;
+      case TransactionType.trade:
+        if (isBuy) return TransactionDirection.inflow;
+        if (isSell) return TransactionDirection.outflow;
+        return amount < 0 ? TransactionDirection.outflow : TransactionDirection.inflow;
+      case TransactionType.transfer:
+        return amount < 0 ? TransactionDirection.outflow : TransactionDirection.inflow;
+    }
+  }
+
+  bool get isOutflow => direction == TransactionDirection.outflow;
+
+  /// Monto con el signo que le corresponde a la dirección. La API manda el
+  /// monto en valor absoluto para casi todo, así que el signo se deriva acá.
+  double get signedAmount => isOutflow ? -amount.abs() : amount.abs();
+
+  /// Valor en dólares del movimiento, cuando se puede saber sin inventarlo:
+  /// el activo ya es un dólar, o la transacción trae el precio del momento.
+  /// Nunca se valoriza con el precio de hoy — eso mentiría sobre el pasado.
+  double? get usdValue {
+    if (isDollarQuote(asset)) return amount.abs();
+    if (price != null && price! > 0 && (priceAsset == null || isDollarQuote(priceAsset!))) {
+      return amount.abs() * price!;
+    }
+    return null;
+  }
+
+  /// Fecha sin hora, para agrupar por día.
+  DateTime get day {
+    final local = timestamp.toLocal();
+    return DateTime(local.year, local.month, local.day);
+  }
+
+  @Deprecated('Usar direction: isPositive no distinguía un retiro de un depósito')
+  bool get isPositive => direction == TransactionDirection.inflow;
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(

@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   cupertino_icons: ^1.0.8
 
@@ -31,7 +33,7 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10+1
   shimmer: ^3.0.0
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # Utils
   equatable: ^2.0.5
@@ -65,16 +67,16 @@ flutter:
 
 # Native Splash Screen Configuration
 flutter_native_splash:
-  color: "#0B0E11"
+  color: "#0C0D0F"
   image: assets/splash/logo.png
-  color_dark: "#0B0E11"
+  color_dark: "#0C0D0F"
   image_dark: assets/splash/logo.png
 
   # iOS - center the image at its natural size (no scaling)
   ios_content_mode: center
 
   android_12:
-    color: "#0B0E11"
+    color: "#0C0D0F"
     image: assets/splash/logo.png
-    color_dark: "#0B0E11"
+    color_dark: "#0C0D0F"
     image_dark: assets/splash/logo.png

@@ -9,6 +9,20 @@ enum ChartTimeframe {
   final String value;
   const ChartTimeframe(this.value);
 
+  /// Texto del período para la frase del delta: "últimas 24 h", "último mes".
+  String get sinceLabel {
+    switch (this) {
+      case ChartTimeframe.h24:
+        return 'últimas 24 h';
+      case ChartTimeframe.d7:
+        return 'últimos 7 días';
+      case ChartTimeframe.m1:
+        return 'último mes';
+      case ChartTimeframe.y1:
+        return 'último año';
+    }
+  }
+
   String get label {
     switch (this) {
       case ChartTimeframe.h24:
@@ -18,7 +32,7 @@ enum ChartTimeframe {
       case ChartTimeframe.m1:
         return '1M';
       case ChartTimeframe.y1:
-        return '1Y';
+        return '1A';
     }
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/em_tokens.dart';
 
 class AssetLogo extends StatelessWidget {
   final String asset;
@@ -51,16 +51,17 @@ class AssetLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: const BoxDecoration(
-        color: AppColors.brandPrimary,
+        color: EmColors.surfaceHigh,
         shape: BoxShape.circle,
+        border: Border.fromBorderSide(BorderSide(color: EmColors.stroke)),
       ),
       child: Center(
         child: Text(
           asset.length >= 2 ? asset.substring(0, 2).toUpperCase() : asset.toUpperCase(),
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: EmColors.textSecondary,
             fontSize: size * 0.4,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -109,9 +110,9 @@ class PairLogos extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: AppColors.bgCard,
+                color: EmColors.bg,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.bgCard, width: 2),
+                border: Border.all(color: EmColors.bg, width: 2),
               ),
               child: AssetLogo(
                 asset: quote,
@@ -141,18 +142,8 @@ class ExchangeLogo extends StatelessWidget {
 
   Color get _exchangeColor {
     switch (exchange.toLowerCase()) {
-      case 'binance':
-        return const Color(0xFFF0B90B);
-      case 'kraken':
-        return const Color(0xFF5741D9);
-      case 'nexo':
-      case 'nexo-pro':
-      case 'nexo-manual':
-        return const Color(0xFF1A4FD6);
-      case 'bitso':
-        return const Color(0xFF00C853);
       default:
-        return AppColors.brandPrimary;
+        return EmColors.brandOf(exchange) ?? EmColors.surfaceHigh;
     }
   }
 

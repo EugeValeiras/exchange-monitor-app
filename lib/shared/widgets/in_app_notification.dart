@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/em_tokens.dart';
 
 /// Controller for managing in-app notifications
 class InAppNotificationController {
@@ -206,7 +206,7 @@ class _IOSStyleNotificationBanner extends StatelessWidget {
                   child: Container(
                     width: 42,
                     height: 42,
-                    color: AppColors.bgPrimary,
+                    color: EmColors.bg,
                     padding: const EdgeInsets.all(6),
                     child: Image.asset(
                       'assets/splash/logo.png',

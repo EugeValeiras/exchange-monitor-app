@@ -2,6 +2,30 @@ import 'package:flutter/foundation.dart';
 import '../models/transaction.dart';
 import 'api_service.dart';
 
+/// Una entrada de la lista: o un movimiento suelto, o varios idénticos del
+/// mismo día plegados en uno.
+class MovementEntry {
+  final List<Transaction> items;
+
+  const MovementEntry(this.items);
+
+  bool get isGroup => items.length > 1;
+  Transaction get first => items.first;
+}
+
+/// Los movimientos de un día.
+class DaySection {
+  final DateTime day;
+  final List<MovementEntry> entries;
+  final int movementCount;
+
+  const DaySection({
+    required this.day,
+    required this.entries,
+    required this.movementCount,
+  });
+}
+
 class TransactionService extends ChangeNotifier {
   final ApiService _apiService;
 
@@ -37,6 +61,65 @@ class TransactionService extends ChangeNotifier {
   List<String> get availableExchanges => _availableExchanges ?? [];
   DateTime? get startDate => _currentFilter.startDate;
   DateTime? get endDate => _currentFilter.endDate;
+
+  /// La lista agrupada por día, con los repetidos plegados.
+  ///
+  /// Antes eran 1.883 tarjetas en un chorro plano, y como Nexo acredita
+  /// intereses una docena de veces por día con el mismo importe y la misma
+  /// hora, tres días de intereses tapaban todo lo demás.
+  List<DaySection> get sections {
+    if (_transactions.isEmpty) return const [];
+
+    final byDay = <DateTime, List<Transaction>>{};
+    for (final t in _transactions) {
+      byDay.putIfAbsent(t.day, () => []).add(t);
+    }
+
+    final days = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return [
+      for (final day in days)
+        DaySection(
+          day: day,
+          entries: _groupSameKind(byDay[day]!),
+          movementCount: byDay[day]!.length,
+        ),
+    ];
+  }
+
+  /// Pliega los movimientos repetitivos de un día. Sólo se pliegan intereses y
+  /// comisiones: un depósito o una operación son eventos con identidad propia
+  /// que el usuario quiere ver uno por uno, aunque se repitan.
+  List<MovementEntry> _groupSameKind(List<Transaction> dayItems) {
+    const groupable = {TransactionType.interest, TransactionType.fee};
+    const threshold = 3;
+
+    final buckets = <String, List<Transaction>>{};
+    final order = <String>[];
+
+    for (final t in dayItems) {
+      final key = groupable.contains(t.type)
+          ? '${t.type.name}|${t.asset}|${t.exchange}'
+          : 'single|${t.id}';
+      if (!buckets.containsKey(key)) order.add(key);
+      buckets.putIfAbsent(key, () => []).add(t);
+    }
+
+    final entries = <MovementEntry>[];
+    for (final key in order) {
+      final items = buckets[key]!;
+      if (items.length >= threshold) {
+        entries.add(MovementEntry(items));
+      } else {
+        for (final t in items) {
+          entries.add(MovementEntry([t]));
+        }
+      }
+    }
+
+    entries.sort((a, b) => b.first.timestamp.compareTo(a.first.timestamp));
+    return entries;
+  }
 
   Future<void> loadTransactions({TransactionFilter? filter, bool refresh = false}) async {
     if (filter != null) {

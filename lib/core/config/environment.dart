@@ -3,14 +3,14 @@ class Environment {
 
   static String get apiBaseUrl {
     if (isProduction) {
-      return 'https://api.exchange.eugeniovaleiras.com/api';
+      return 'https://api.monitor.eugeniovaleiras.com/api';
     }
     return 'http://localhost:3050/api';
   }
 
   static String get wsBaseUrl {
     if (isProduction) {
-      return 'wss://api.exchange.eugeniovaleiras.com';
+      return 'wss://api.monitor.eugeniovaleiras.com';
     }
     return 'ws://localhost:3050';
   }

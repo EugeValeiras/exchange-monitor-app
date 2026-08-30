@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
-import '../../features/dashboard/screens/dashboard_screen.dart';
-import '../../features/prices/screens/prices_screen.dart';
-import '../../features/balances/screens/balances_screen.dart';
-import '../../features/transactions/screens/transactions_screen.dart';
 
+import '../../core/theme/em_tokens.dart';
+import '../../features/market/screens/market_screen.dart';
+import '../../features/movements/screens/movements_screen.dart';
+import '../../features/position/screens/position_screen.dart';
+import '../../features/settings/screens/settings_screen.dart';
+
+/// Cuatro destinos reales.
+///
+/// Antes eran Dashboard, Balances, Prices y Transactions: las dos primeras
+/// mostraban la misma tarjeta y casi los mismos datos, y no había ningún lugar
+/// para los ajustes. Al fusionarlas se libera la pestaña que faltaba.
 class AppScaffold extends StatefulWidget {
   const AppScaffold({super.key});
 
@@ -13,58 +19,77 @@ class AppScaffold extends StatefulWidget {
 }
 
 class _AppScaffoldState extends State<AppScaffold> {
-  int _currentIndex = 0;
+  int _index = 0;
 
-  final List<Widget> _screens = const [
-    DashboardScreen(),
-    BalancesScreen(),
-    PricesScreen(),
-    TransactionsScreen(),
-  ];
-
-  final List<_NavItem> _navItems = const [
-    _NavItem(icon: Icons.dashboard, label: 'Dashboard'),
-    _NavItem(icon: Icons.account_balance_wallet, label: 'Balances'),
-    _NavItem(icon: Icons.show_chart, label: 'Prices'),
-    _NavItem(icon: Icons.swap_horiz, label: 'Transactions'),
+  static const _tabs = <({IconData icon, String label})>[
+    (icon: Icons.show_chart, label: 'Posición'),
+    (icon: Icons.swap_horiz, label: 'Movimientos'),
+    (icon: Icons.bar_chart, label: 'Mercado'),
+    (icon: Icons.settings_outlined, label: 'Ajustes'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+        index: _index,
+        children: const [
+          PositionScreen(),
+          MovementsScreen(),
+          MarketScreen(),
+          SettingsScreen(),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: AppColors.border,
-              width: 1,
+          color: EmColors.bg,
+          border: Border(top: BorderSide(color: EmColors.stroke)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: EmSpace.md,
+              vertical: EmSpace.sm + 2,
+            ),
+            child: Row(
+              children: [
+                for (var i = 0; i < _tabs.length; i++)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _index = i),
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _tabs[i].icon,
+                            size: 21,
+                            color: i == _index
+                                ? EmColors.textPrimary
+                                : EmColors.textTertiary,
+                          ),
+                          const SizedBox(height: EmSpace.xs + 1),
+                          Text(
+                            _tabs[i].label,
+                            style: EmText.meta.copyWith(
+                              fontSize: 11,
+                              fontWeight:
+                                  i == _index ? FontWeight.w600 : FontWeight.w500,
+                              color: i == _index
+                                  ? EmColors.textPrimary
+                                  : EmColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: _navItems
-              .map(
-                (item) => BottomNavigationBarItem(
-                  icon: Icon(item.icon),
-                  label: item.label,
-                ),
-              )
-              .toList(),
         ),
       ),
     );
   }
-}
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-
-  const _NavItem({required this.icon, required this.label});
 }

@@ -1,6 +1,30 @@
 import 'package:flutter/foundation.dart';
 import '../models/chart_data.dart';
+import '../models/transaction.dart';
+import '../utils/formatters.dart';
 import 'api_service.dart';
+
+/// Un movimiento de capital dentro del período del gráfico: plata que entró o
+/// salió por mano del usuario, no resultado de mercado.
+class CapitalEvent {
+  final DateTime timestamp;
+  final String asset;
+  final double amount;
+  final bool isDeposit;
+
+  /// Valor en dólares AL MOMENTO del movimiento. Null cuando la transacción no
+  /// trae precio: entonces el evento se muestra pero no se suma, en vez de
+  /// inventar una cifra con el precio de hoy.
+  final double? usdValue;
+
+  const CapitalEvent({
+    required this.timestamp,
+    required this.asset,
+    required this.amount,
+    required this.isDeposit,
+    this.usdValue,
+  });
+}
 
 class ChartService extends ChangeNotifier {
   final ApiService _apiService;
@@ -10,7 +34,8 @@ class ChartService extends ChangeNotifier {
   ChartTimeframe _selectedTimeframe = ChartTimeframe.h24;
   bool _isLoading = false;
   String? _error;
-  Set<String> _selectedAssets = {};
+  final Set<String> _selectedAssets = {};
+  List<CapitalEvent> _capitalEvents = const [];
 
   ChartService(this._apiService);
 
@@ -25,6 +50,38 @@ class ChartService extends ChangeNotifier {
 
   double get changeUsd => _chartData?.changeUsd ?? _chartDataByAsset?.changeUsd ?? 0;
   double get changePercent => _chartData?.changePercent ?? _chartDataByAsset?.changePercent ?? 0;
+
+  /// Movimientos de capital dentro del período dibujado.
+  List<CapitalEvent> get capitalEvents => _capitalEvents;
+
+  /// Neto de capital del período en dólares, o null si algún movimiento no se
+  /// pudo valorizar (entonces la UI dice cuántos hubo, sin cifra).
+  double? get netCapitalUsd {
+    if (_capitalEvents.isEmpty) return 0;
+    double net = 0;
+    for (final e in _capitalEvents) {
+      if (e.usdValue == null) return null;
+      net += e.isDeposit ? e.usdValue! : -e.usdValue!;
+    }
+    return net;
+  }
+
+  /// Primer y último valor de la serie: con eso el número grande puede mostrar
+  /// el valor comparado del período, en vez de quedarse siempre en "ahora".
+  double? get startValue {
+    final values = dataPoints;
+    return values.isEmpty ? null : values.first;
+  }
+
+  double? get endValue {
+    final values = dataPoints;
+    return values.isEmpty ? null : values.last;
+  }
+
+  DateTime? get periodStart {
+    final points = getChartPoints();
+    return points.isEmpty ? null : points.first.timestamp;
+  }
 
   List<double> get dataPoints {
     // If we have filtered assets and asset data, calculate the sum of selected assets
@@ -100,6 +157,7 @@ class ChartService extends ChangeNotifier {
         _chartDataByAsset = null;
       }
       _error = null;
+      await _loadCapitalEvents();
     } on ApiException catch (e) {
       _error = e.message;
       if (kDebugMode) {
@@ -113,6 +171,51 @@ class ChartService extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Trae los depósitos y retiros del período para poder separar, en la
+  /// pantalla, lo que se movió por mercado de lo que entró o salió por mano
+  /// del usuario. Antes la curva mezclaba las dos cosas y un depósito se leía
+  /// como una ganancia.
+  Future<void> _loadCapitalEvents() async {
+    final start = periodStart;
+    if (start == null) {
+      _capitalEvents = const [];
+      return;
+    }
+
+    try {
+      final response = await _apiService.get<Map<String, dynamic>>(
+        '/transactions',
+        queryParameters: {
+          'types': 'deposit,withdrawal',
+          'startDate': start.toIso8601String(),
+          'limit': '200',
+        },
+      );
+
+      final page = PaginatedTransactions.fromJson(response);
+      _capitalEvents = page.data.map((t) {
+        final isDeposit = t.type == TransactionType.deposit;
+        double? usd;
+        if (isDollarQuote(t.asset)) {
+          usd = t.amount.abs();
+        } else if (t.price != null && (t.priceAsset == null || isDollarQuote(t.priceAsset!))) {
+          usd = t.amount.abs() * t.price!;
+        }
+        return CapitalEvent(
+          timestamp: t.timestamp,
+          asset: t.asset,
+          amount: t.amount.abs(),
+          isDeposit: isDeposit,
+          usdValue: usd,
+        );
+      }).toList();
+    } catch (e) {
+      // El gráfico se dibuja igual sin esto; sólo se pierde la distinción.
+      _capitalEvents = const [];
+      if (kDebugMode) print('Error cargando movimientos de capital: $e');
     }
   }
 

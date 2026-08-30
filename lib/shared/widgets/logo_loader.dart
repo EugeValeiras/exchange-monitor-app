@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
 
 /// Animated logo loader widget that matches the webapp design.
 /// Shows a chart icon with animated trend line and data points.
@@ -127,6 +128,10 @@ class _LogoPainter extends CustomPainter {
   final double lineProgress;
   final double pulseValue;
 
+  /// El cian del logotipo. Es el ÚNICO color de marca que sobrevive en la app,
+  /// y sólo acá: en el splash y en la puerta de entrada. Dentro del producto no
+  /// aparece nunca — el resto de la interfaz deja el color libre para el dinero
+  /// (ver EmColors).
   static const Color accentColor = Color(0xFF00C2FF);
 
   _LogoPainter({

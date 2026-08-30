@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import '../../../core/theme/app_theme.dart';
+
 import '../../../core/services/passkey_service.dart';
+import '../../../core/theme/em_tokens.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/em/em_primitives.dart';
 
 class PasskeySettingsScreen extends StatefulWidget {
   const PasskeySettingsScreen({super.key});
@@ -12,462 +14,145 @@ class PasskeySettingsScreen extends StatefulWidget {
 }
 
 class _PasskeySettingsScreenState extends State<PasskeySettingsScreen> {
-  final _deviceNameController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
-    _loadPasskeys();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PasskeyService>().loadCredentials();
+    });
   }
 
-  @override
-  void dispose() {
-    _deviceNameController.dispose();
-    super.dispose();
-  }
+  Future<void> _register() async {
+    final service = context.read<PasskeyService>();
+    final ok = await service.registerPasskey();
 
-  Future<void> _loadPasskeys() async {
-    await context.read<PasskeyService>().loadCredentials();
-  }
-
-  Future<void> _registerPasskey() async {
-    final deviceName = await _showDeviceNameDialog();
-    if (deviceName == null) return;
-
-    final passkeyService = context.read<PasskeyService>();
-    final success = await passkeyService.registerPasskey(deviceName: deviceName);
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passkey registrado correctamente'),
-          backgroundColor: AppColors.success,
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Passkey creada en este dispositivo'
+              : service.error ?? 'No se pudo crear la passkey',
         ),
-      );
-    } else if (mounted && passkeyService.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(passkeyService.error!),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
-  }
-
-  Future<String?> _showDeviceNameDialog() async {
-    _deviceNameController.clear();
-
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.bgSecondary,
-        title: const Text('Nombre del dispositivo'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Ingresa un nombre para identificar este dispositivo',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _deviceNameController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Ej: iPhone 15 Pro',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = _deviceNameController.text.trim();
-              Navigator.pop(context, name.isEmpty ? 'Dispositivo' : name);
-            },
-            child: const Text('Continuar'),
-          ),
-        ],
       ),
     );
   }
 
-  Future<void> _deletePasskey(PasskeyCredential credential) async {
+  Future<void> _delete(PasskeyCredential credential) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.bgSecondary,
-        title: const Text('Eliminar Passkey'),
+        title: const Text('Eliminar passkey'),
         content: Text(
-          'Deseas eliminar el passkey "${credential.deviceName}"?\n\nNo podras usar este dispositivo para iniciar sesion sin contrasena.',
-          style: const TextStyle(color: AppColors.textSecondary),
+          'No vas a poder entrar con "${credential.deviceName}" nunca más. '
+          'Tu contraseña sigue funcionando.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: TextButton.styleFrom(foregroundColor: EmColors.down),
             child: const Text('Eliminar'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
-      final passkeyService = context.read<PasskeyService>();
-      final success = await passkeyService.deletePasskey(credential.id);
-
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Passkey eliminado'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-        } else if (passkeyService.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(passkeyService.error!),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      }
-    }
+    if (confirmed != true || !mounted) return;
+    await context.read<PasskeyService>().deletePasskey(credential.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    final passkeyService = context.watch<PasskeyService>();
+    final service = context.watch<PasskeyService>();
 
     return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: AppColors.bgElevated,
-        title: const Text('Passkeys'),
-      ),
-      body: passkeyService.isLoading && passkeyService.credentials.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadPasskeys,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Info card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgSecondary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppColors.bgTertiary,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.fingerprint,
-                                color: AppColors.brandAccent,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Que son los Passkeys?',
-                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          color: AppColors.textPrimary,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Los passkeys te permiten iniciar sesion usando Face ID, Touch ID o huella dactilar, sin necesidad de recordar tu contrasena. Son mas seguros y faciles de usar.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Support status
-                  if (!passkeyService.isSupported) ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.warning_rounded, color: AppColors.warning),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Tu dispositivo no soporta passkeys',
-                              style: TextStyle(
-                                color: AppColors.warning,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Error message
-                  if (passkeyService.error != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: AppColors.error, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              passkeyService.error!,
-                              style: const TextStyle(color: AppColors.error),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 18),
-                            color: AppColors.error,
-                            onPressed: () => passkeyService.clearError(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Section title
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Tus Passkeys',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                      ),
-                      Text(
-                        '${passkeyService.credentials.length}',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Passkeys list
-                  if (passkeyService.credentials.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.key_off_outlined,
-                            color: AppColors.textTertiary,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'No tienes passkeys registrados',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Agrega uno para iniciar sesion sin contrasena',
-                            style: TextStyle(
-                              color: AppColors.textTertiary,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: passkeyService.credentials.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final credential = entry.value;
-                          final isLast = index == passkeyService.credentials.length - 1;
-
-                          return Column(
-                            children: [
-                              _PasskeyTile(
-                                credential: credential,
-                                onDelete: () => _deletePasskey(credential),
-                              ),
-                              if (!isLast)
-                                const Divider(
-                                  height: 1,
-                                  color: AppColors.border,
-                                  indent: 72,
-                                ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
-
-                  // Add passkey button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: passkeyService.isSupported && !passkeyService.isLoading
-                          ? _registerPasskey
-                          : null,
-                      icon: passkeyService.isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.bgPrimary,
-                              ),
-                            )
-                          : const Icon(Icons.add),
-                      label: Text(
-                        passkeyService.isLoading ? 'Registrando...' : 'Agregar Passkey',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-class _PasskeyTile extends StatelessWidget {
-  final PasskeyCredential credential;
-  final VoidCallback onDelete;
-
-  const _PasskeyTile({
-    required this.credential,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
+      appBar: AppBar(title: const Text('Passkeys')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          EmSpace.screen,
+          EmSpace.sm,
+          EmSpace.screen,
+          EmSpace.xxl,
+        ),
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.bgTertiary,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.key,
-              color: AppColors.brandAccent,
-              size: 22,
-            ),
+          Text(
+            'Una passkey te deja entrar con Face ID o Touch ID, sin escribir la '
+            'contraseña. Queda guardada en el dispositivo y no viaja a ningún lado.',
+            style: EmText.body.copyWith(color: EmColors.textTertiary),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  credential.deviceName,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+          const SizedBox(height: EmSpace.xl),
+
+          EmSectionHeader(
+            title: 'Tus passkeys',
+            trailing: service.credentials.isEmpty
+                ? null
+                : '${service.credentials.length}',
+          ),
+
+          if (service.isLoading && service.credentials.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: EmSpace.xl),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Creado: ${dateFormat.format(credential.createdAt)}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
+              ),
+            )
+          else if (service.credentials.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: EmSpace.md),
+              child: Text(
+                'Todavía no hay ninguna en esta cuenta.',
+                style: EmText.label.copyWith(color: EmColors.textTertiary),
+              ),
+            )
+          else
+            for (final credential in service.credentials)
+              EmListRow(
+                leading: const EmIconTile(
+                  icon: Icons.key_outlined,
+                  color: EmColors.textSecondary,
+                  tinted: false,
                 ),
-                if (credential.lastUsedAt != null)
-                  Text(
-                    'Ultimo uso: ${dateFormat.format(credential.lastUsedAt!)}',
-                    style: const TextStyle(
-                      color: AppColors.textTertiary,
-                      fontSize: 12,
+                title: credential.deviceName,
+                subtitle: credential.lastUsedAt != null
+                    ? 'Último uso ${formatRelative(credential.lastUsedAt!)}'
+                    : 'Creada ${formatRelative(credential.createdAt)}',
+                showDivider: credential != service.credentials.last,
+                trailing: GestureDetector(
+                  onTap: () => _delete(credential),
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.all(EmSpace.sm),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 19,
+                      color: EmColors.textTertiary,
                     ),
                   ),
-              ],
+                ),
+              ),
+
+          const SizedBox(height: EmSpace.xl),
+          OutlinedButton.icon(
+            onPressed: service.isLoading || !service.isSupported ? null : _register,
+            icon: const Icon(Icons.add, size: 19),
+            label: const Text('Agregar passkey'),
+          ),
+          if (!service.isSupported) ...[
+            const SizedBox(height: EmSpace.md),
+            Text(
+              'Este dispositivo no admite passkeys.',
+              style: EmText.meta,
+              textAlign: TextAlign.center,
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            color: AppColors.error,
-            onPressed: onDelete,
-          ),
+          ],
         ],
       ),
     );
