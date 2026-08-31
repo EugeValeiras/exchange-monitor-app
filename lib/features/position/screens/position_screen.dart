@@ -14,6 +14,7 @@ import '../../../shared/widgets/asset_logo.dart';
 import '../../../shared/widgets/em/em_balance_chart.dart';
 import '../../../shared/widgets/em/em_primitives.dart';
 import '../../asset/screens/asset_detail_screen.dart';
+import '../widgets/pnl_breakdown_sheet.dart';
 
 /// Pantalla principal: cuánto tenés, cómo viene y en qué.
 ///
@@ -281,6 +282,9 @@ class _PositionScreenState extends State<PositionScreen> {
                 value: _hideValues ? '••••' : formatSignedUsd(pnl.totalPnl, decimals: 0),
                 label: 'P&L total',
                 valueColor: EmDelta.colorFor(pnl.totalPnl),
+                onTap: pnl.hasData
+                    ? () => PnlBreakdownSheet.show(context, PnlBreakdownKind.total)
+                    : null,
               ),
             ),
             const SizedBox(width: EmSpace.sm),
@@ -291,6 +295,12 @@ class _PositionScreenState extends State<PositionScreen> {
                     : formatSignedUsd(pnl.unrealizedPnl, decimals: 0),
                 label: 'no realizado',
                 valueColor: EmDelta.colorFor(pnl.unrealizedPnl),
+                onTap: pnl.positions.isEmpty
+                    ? null
+                    : () => PnlBreakdownSheet.show(
+                          context,
+                          PnlBreakdownKind.unrealized,
+                        ),
               ),
             ),
             const SizedBox(width: EmSpace.sm),

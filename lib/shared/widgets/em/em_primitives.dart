@@ -257,38 +257,67 @@ class EmStat extends StatelessWidget {
   final String label;
   final Color? valueColor;
 
+  /// Cuando el dato se puede abrir para ver de qué está hecho. El card lo
+  /// anuncia con un chevron al lado de la etiqueta: sin eso, tres cards
+  /// idénticos donde sólo algunos responden al toque son una lotería.
+  final VoidCallback? onTap;
+
   const EmStat({
     super.key,
     required this.value,
     required this.label,
     this.valueColor,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: EmSpace.md + 1,
-        vertical: EmSpace.md - 1,
-      ),
-      decoration: BoxDecoration(
-        color: EmColors.surface,
-        borderRadius: BorderRadius.circular(EmRadii.control),
-        border: Border.all(color: EmColors.stroke),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: EmText.headline.copyWith(color: valueColor ?? EmColors.textPrimary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 3),
-          Text(label, style: EmText.meta, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: EmSpace.md + 1,
+          vertical: EmSpace.md - 1,
+        ),
+        decoration: BoxDecoration(
+          color: EmColors.surface,
+          borderRadius: BorderRadius.circular(EmRadii.control),
+          border: Border.all(color: EmColors.stroke),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: EmText.headline.copyWith(color: valueColor ?? EmColors.textPrimary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 3),
+            Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    style: EmText.meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 13,
+                    color: EmColors.textMuted,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
