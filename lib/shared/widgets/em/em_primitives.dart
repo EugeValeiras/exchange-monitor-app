@@ -446,6 +446,13 @@ class EmListRow extends StatelessWidget {
   final bool showDivider;
   final bool showChevron;
 
+  /// Cuántas líneas puede ocupar el subtítulo antes de cortar con "…".
+  ///
+  /// Una por defecto, que es lo que quiere una lista pareja. Las filas que
+  /// llevan varios datos —fecha, conteo, precio, par— piden dos: cortar ahí
+  /// esconde justo el final, que es donde está el mercado.
+  final int subtitleMaxLines;
+
   const EmListRow({
     super.key,
     this.leading,
@@ -457,6 +464,7 @@ class EmListRow extends StatelessWidget {
     this.onTap,
     this.showDivider = true,
     this.showChevron = false,
+    this.subtitleMaxLines = 1,
   });
 
   @override
@@ -495,7 +503,7 @@ class EmListRow extends StatelessWidget {
                     Text(
                       subtitle!,
                       style: EmText.meta,
-                      maxLines: 1,
+                      maxLines: subtitleMaxLines,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],

@@ -73,4 +73,37 @@ class PnlService extends ChangeNotifier {
   }
 
   Future<void> refresh() => load();
+
+  /// Los lotes abiertos de un activo: de esto está hecho su no realizado.
+  ///
+  /// Se pide en el momento y no se cachea. Es el detalle de una pantalla que
+  /// se abre a demanda, no algo que la app necesite tener siempre en memoria,
+  /// y la lista cambia con cada venta.
+  Future<List<CostBasisLot>> lotsFor(String asset) async {
+    final res = await _apiService.get<Map<String, dynamic>>(
+      '/pnl/lots',
+      queryParameters: {'assets': asset.toUpperCase(), 'limit': '$_detailLimit'},
+    );
+    return (res['data'] as List<dynamic>?)
+            ?.map((e) => CostBasisLot.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [];
+  }
+
+  /// Las ventas cerradas de un activo: de esto está hecho su realizado.
+  Future<List<RealizedPnlItem>> realizedFor(String asset) async {
+    final res = await _apiService.get<Map<String, dynamic>>(
+      '/pnl/realized/paginated',
+      queryParameters: {'assets': asset.toUpperCase(), 'limit': '$_detailLimit'},
+    );
+    return (res['data'] as List<dynamic>?)
+            ?.map((e) => RealizedPnlItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [];
+  }
 }
+
+/// Techo por activo para las listas de detalle. Ambos endpoints paginan de a
+/// 20 y una posición vieja tiene bastantes más lotes que eso; con este límite
+/// entran enteras en una sola llamada.
+const int _detailLimit = 300;

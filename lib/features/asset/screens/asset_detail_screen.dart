@@ -13,6 +13,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/asset_logo.dart';
 import '../../../shared/widgets/em/em_primitives.dart';
 import '../../movements/widgets/movement_row.dart';
+import '../widgets/asset_pnl_breakdown_sheet.dart';
 
 /// Detalle de un activo.
 ///
@@ -247,11 +248,17 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
                       child: _pnlCell(
                         'No realizado',
                         position?.unrealizedPnl ?? assetPnl?.unrealizedPnl,
+                        kind: AssetPnlKind.unrealized,
+                        price: price,
                       ),
                     ),
                     const VerticalDivider(width: 1, color: EmColors.strokeSoft),
                     Expanded(
-                      child: _pnlCell('Realizado', assetPnl?.realizedPnl),
+                      child: _pnlCell(
+                        'Realizado',
+                        assetPnl?.realizedPnl,
+                        kind: AssetPnlKind.realized,
+                      ),
                     ),
                   ],
                 ),
@@ -273,23 +280,61 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
     );
   }
 
-  Widget _pnlCell(String label, double? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: EmSpace.lg,
-        vertical: EmSpace.md + 1,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value == null ? '—' : formatSignedUsd(value),
-            style: EmText.headline.copyWith(color: EmDelta.colorFor(value)),
-          ),
-          const SizedBox(height: 3),
-          Text(label, style: EmText.meta),
-        ],
+  /// Un resultado del activo, y de qué está hecho.
+  ///
+  /// Sin valor no se abre: un card que dice "—" no tiene nada que desarmar, y
+  /// el chevron estaría prometiendo un panel vacío.
+  Widget _pnlCell(
+    String label,
+    double? value, {
+    required AssetPnlKind kind,
+    double? price,
+  }) {
+    final canOpen = value != null;
+
+    return GestureDetector(
+      onTap: canOpen
+          ? () => AssetPnlBreakdownSheet.show(
+                context,
+                asset: widget.asset,
+                kind: kind,
+                total: value,
+                price: price,
+              )
+          : null,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: EmSpace.lg,
+          vertical: EmSpace.md + 1,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value == null ? '—' : formatSignedUsd(value),
+              style: EmText.headline.copyWith(color: EmDelta.colorFor(value)),
+            ),
+            const SizedBox(height: 3),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: EmText.meta),
+                // Los cards que se abren lo anuncian: tres iguales donde sólo
+                // algunos responden al toque son una lotería.
+                if (canOpen) ...[
+                  const SizedBox(width: 3),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 14,
+                    color: EmColors.textTertiary,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -126,3 +126,130 @@ class PnlSummary extends Equatable {
   List<Object?> get props =>
       [totalRealizedPnl, totalUnrealizedPnl, totalPnl, byAsset];
 }
+
+/// Un lote de compra abierto, de `GET /pnl/lots`.
+///
+/// Es la unidad de la que está hecho el no realizado: cada compra que todavía
+/// tenés, con lo que pagaste por ella. La contabilidad es FIFO, así que una
+/// venta consume los lotes más viejos primero y lo que queda acá es lo que
+/// sobrevivió.
+class CostBasisLot extends Equatable {
+  final String id;
+  final String asset;
+  final String exchange;
+
+  /// Cómo entró: una compra, un depósito, un swap desde otro par.
+  final String source;
+  final DateTime acquiredAt;
+  final double originalAmount;
+
+  /// Lo que queda del lote después de las ventas que lo consumieron.
+  final double remainingAmount;
+  final double costPerUnit;
+  final double totalCost;
+
+  /// El par por el que entró, cuando no fue contra USD (NEXO/BTC, por ejemplo).
+  final String? pair;
+
+  const CostBasisLot({
+    required this.id,
+    required this.asset,
+    required this.exchange,
+    required this.source,
+    required this.acquiredAt,
+    required this.originalAmount,
+    required this.remainingAmount,
+    required this.costPerUnit,
+    required this.totalCost,
+    this.pair,
+  });
+
+  /// Lo que este lote aporta al no realizado, al precio de ahora.
+  double unrealizedAt(double price) => (price - costPerUnit) * remainingAmount;
+
+  /// Lo que costó la parte que todavía tenés — no [totalCost], que es lo que
+  /// costó el lote entero antes de que las ventas se comieran una parte.
+  double get remainingCost => costPerUnit * remainingAmount;
+
+  /// El lote fue consumido en parte por una venta.
+  bool get isPartial => remainingAmount < originalAmount;
+
+  factory CostBasisLot.fromJson(Map<String, dynamic> json) {
+    return CostBasisLot(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      asset: json['asset'] as String,
+      exchange: (json['exchange'] as String?) ?? '',
+      source: (json['source'] as String?) ?? '',
+      acquiredAt:
+          DateTime.tryParse(json['acquiredAt']?.toString() ?? '')?.toLocal() ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+      originalAmount: (json['originalAmount'] as num?)?.toDouble() ?? 0,
+      remainingAmount: (json['remainingAmount'] as num?)?.toDouble() ?? 0,
+      costPerUnit: (json['costPerUnit'] as num?)?.toDouble() ?? 0,
+      totalCost: (json['totalCost'] as num?)?.toDouble() ?? 0,
+      pair: json['pair'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, asset, exchange, acquiredAt, remainingAmount];
+}
+
+/// Una venta ya cerrada, de `GET /pnl/realized`.
+///
+/// Es la unidad de la que está hecho el realizado: la API guarda un documento
+/// por venta con los lotes que consumió, así que la suma de estas filas es
+/// exactamente el número del card.
+class RealizedPnlItem extends Equatable {
+  final String id;
+  final String asset;
+  final double amount;
+
+  /// Lo que entró por la venta.
+  final double proceeds;
+
+  /// Lo que habían costado los lotes que la venta consumió.
+  final double costBasis;
+  final double realizedPnl;
+  final DateTime realizedAt;
+  final String exchange;
+  final double buyPrice;
+  final double sellPrice;
+
+  const RealizedPnlItem({
+    required this.id,
+    required this.asset,
+    required this.amount,
+    required this.proceeds,
+    required this.costBasis,
+    required this.realizedPnl,
+    required this.realizedAt,
+    required this.exchange,
+    required this.buyPrice,
+    required this.sellPrice,
+  });
+
+  /// Cuánto rindió respecto de lo que había costado.
+  double? get percent =>
+      costBasis > 0 ? (realizedPnl / costBasis) * 100 : null;
+
+  factory RealizedPnlItem.fromJson(Map<String, dynamic> json) {
+    return RealizedPnlItem(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      asset: json['asset'] as String,
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      proceeds: (json['proceeds'] as num?)?.toDouble() ?? 0,
+      costBasis: (json['costBasis'] as num?)?.toDouble() ?? 0,
+      realizedPnl: (json['realizedPnl'] as num?)?.toDouble() ?? 0,
+      realizedAt:
+          DateTime.tryParse(json['realizedAt']?.toString() ?? '')?.toLocal() ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+      exchange: (json['exchange'] as String?) ?? '',
+      buyPrice: (json['buyPrice'] as num?)?.toDouble() ?? 0,
+      sellPrice: (json['sellPrice'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, asset, realizedAt, realizedPnl];
+}
