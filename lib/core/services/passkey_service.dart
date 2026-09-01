@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:passkeys/authenticator.dart';
 import 'package:passkeys/types.dart';
-import 'package:passkeys_platform_interface/types/mediation.dart';
 import 'api_service.dart';
 
 class PasskeyCredential {
