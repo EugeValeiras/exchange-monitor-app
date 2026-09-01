@@ -10,7 +10,7 @@
 	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>webcredentials:exchange.eugeniovaleiras.com</string>
+		<string>webcredentials:eugeniovaleiras.com</string>
 	</array>
 </dict>
 </plist>
