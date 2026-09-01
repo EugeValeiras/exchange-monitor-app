@@ -43,6 +43,7 @@ class NotificationService extends ChangeNotifier {
   int _priceChangeThreshold = 5;
   String? _quietHoursStart;
   String? _quietHoursEnd;
+  List<String> _alertAssets = const [];
 
   // Configuration
   static const int _maxApnsRetries = 10;
@@ -59,6 +60,14 @@ class NotificationService extends ChangeNotifier {
   int get priceChangeThreshold => _priceChangeThreshold;
   String? get quietHoursStart => _quietHoursStart;
   String? get quietHoursEnd => _quietHoursEnd;
+
+  /// Activos de los que llegan avisos. La API siempre devuelve la lista
+  /// resuelta —si nunca elegiste, manda el conjunto por defecto—, así que acá
+  /// no hay que distinguir "vacío" de "sin configurar".
+  List<String> get alertAssets => List.unmodifiable(_alertAssets);
+
+  bool followsAsset(String asset) =>
+      _alertAssets.contains(asset.toUpperCase());
 
   /// Initialize the notification service.
   /// Should be called once at app startup.
@@ -335,6 +344,10 @@ class NotificationService extends ChangeNotifier {
       _priceChangeThreshold = response['priceChangeThreshold'] ?? 5;
       _quietHoursStart = response['quietHoursStart'];
       _quietHoursEnd = response['quietHoursEnd'];
+      _alertAssets = (response['alertAssets'] as List?)
+              ?.map((a) => a.toString().toUpperCase())
+              .toList() ??
+          const [];
       notifyListeners();
     } catch (e) {
       debugPrint('[Notifications] Error loading settings: $e');
@@ -347,18 +360,23 @@ class NotificationService extends ChangeNotifier {
     required int priceChangeThreshold,
     String? quietHoursStart,
     String? quietHoursEnd,
+    List<String>? alertAssets,
   }) async {
+    final assets = alertAssets ?? _alertAssets;
+
     await _apiService.put('/notifications/settings', data: {
       'enabled': enabled,
       'priceChangeThreshold': priceChangeThreshold,
       'quietHoursStart': quietHoursStart,
       'quietHoursEnd': quietHoursEnd,
+      'alertAssets': assets,
     });
 
     _enabled = enabled;
     _priceChangeThreshold = priceChangeThreshold;
     _quietHoursStart = quietHoursStart;
     _quietHoursEnd = quietHoursEnd;
+    _alertAssets = assets;
     notifyListeners();
   }
 
@@ -390,5 +408,36 @@ class NotificationService extends ChangeNotifier {
       quietHoursStart: start,
       quietHoursEnd: end,
     );
+  }
+
+  /// Sumar o sacar un activo de los que avisan.
+  ///
+  /// Pinta el cambio antes de que la API conteste y lo revierte si falla: son
+  /// muchos interruptores en una lista y esperar el viaje de red en cada uno
+  /// los hace sentir trabados.
+  Future<void> setAssetFollowed(String asset, bool followed) async {
+    final upper = asset.toUpperCase();
+    final previous = List<String>.from(_alertAssets);
+
+    final next = List<String>.from(_alertAssets)..remove(upper);
+    if (followed) next.add(upper);
+
+    _alertAssets = next;
+    notifyListeners();
+
+    try {
+      await updateSettings(
+        enabled: _enabled,
+        priceChangeThreshold: _priceChangeThreshold,
+        quietHoursStart: _quietHoursStart,
+        quietHoursEnd: _quietHoursEnd,
+        alertAssets: next,
+      );
+    } catch (e) {
+      debugPrint('[Notifications] No se pudo guardar la selección: $e');
+      _alertAssets = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 }

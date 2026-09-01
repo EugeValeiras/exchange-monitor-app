@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/services/balance_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/em_tokens.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/em/em_primitives.dart';
 
 /// Notificaciones.
@@ -30,6 +32,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       final service = context.read<NotificationService>();
       service.loadSettings();
       service.refreshPermissionStatus();
+      // La lista de activos elegibles sale de la cartera: si entraste directo
+      // acá sin pasar por Posición, todavía no está cargada.
+      final balance = context.read<BalanceService>();
+      if (!balance.hasData) balance.loadBalance();
     });
   }
 
@@ -160,6 +166,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           ),
 
           const SizedBox(height: EmSpace.xl),
+          _AssetPicker(enabled: service.enabled),
+
+          const SizedBox(height: EmSpace.xl),
           EmSectionHeader(
             title: 'Horas de silencio',
             trailing: hasQuietHours ? 'quitar' : null,
@@ -193,6 +202,87 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             style: EmText.meta,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Qué activos avisan.
+///
+/// La lista sale de tu cartera, no de un catálogo: el aviso es sobre tu plata.
+/// Se suman los que ya estaban elegidos aunque hoy no tengas saldo, para que
+/// vender todo de algo no borre en silencio una elección tuya.
+class _AssetPicker extends StatelessWidget {
+  final bool enabled;
+
+  const _AssetPicker({required this.enabled});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = context.watch<NotificationService>();
+    final balance = context.watch<BalanceService>();
+
+    final held = balance.sortedAssetsByValue;
+    final heldTickers = held.map((a) => a.asset.toUpperCase()).toList();
+    final orphans = service.alertAssets
+        .where((a) => !heldTickers.contains(a))
+        .toList()
+      ..sort();
+
+    final rows = <({String asset, double? valueUsd})>[
+      for (final a in held) (asset: a.asset.toUpperCase(), valueUsd: a.valueUsd),
+      for (final a in orphans) (asset: a, valueUsd: null),
+    ];
+
+    final selected = rows.where((r) => service.followsAsset(r.asset)).length;
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: IgnorePointer(
+        ignoring: !enabled,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            EmSectionHeader(
+              title: 'Activos',
+              trailing: rows.isEmpty ? null : '$selected de ${rows.length}',
+            ),
+            if (rows.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: EmSpace.md),
+                child: Text(
+                  'Cuando cargue tu cartera vas a poder elegir acá.',
+                  style: EmText.label.copyWith(color: EmColors.textTertiary),
+                ),
+              )
+            else
+              for (final row in rows)
+                EmListRow(
+                  leading: EmAssetAvatar(asset: row.asset),
+                  title: row.asset,
+                  subtitle: row.valueUsd == null
+                      ? 'sin saldo'
+                      : formatUsd(row.valueUsd!),
+                  showDivider: row != rows.last,
+                  trailing: Switch(
+                    value: service.followsAsset(row.asset),
+                    onChanged: (value) =>
+                        service.setAssetFollowed(row.asset, value),
+                  ),
+                  onTap: () => service.setAssetFollowed(
+                    row.asset,
+                    !service.followsAsset(row.asset),
+                  ),
+                ),
+            const SizedBox(height: EmSpace.sm + 2),
+            Text(
+              selected == 0 && rows.isNotEmpty
+                  ? 'Sin ningún activo elegido no llega ningún aviso.'
+                  : 'Sólo avisamos de los activos marcados.',
+              style: EmText.meta,
+            ),
+          ],
+        ),
       ),
     );
   }
