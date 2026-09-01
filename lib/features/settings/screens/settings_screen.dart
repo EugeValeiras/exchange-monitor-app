@@ -114,7 +114,7 @@ class SettingsScreen extends StatelessWidget {
                 title: formatExchangeName(exchange.exchange),
                 subtitle: '${exchange.balances.length} '
                     '${exchange.balances.length == 1 ? 'activo' : 'activos'}',
-                value: formatMoney(exchange.totalValueUsd),
+                value: formatUsd(exchange.totalValueUsd),
                 showDivider: exchange != balance.exchanges.last,
               ),
 

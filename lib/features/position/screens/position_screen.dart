@@ -48,7 +48,7 @@ class _PositionScreenState extends State<PositionScreen> {
       balance.loadBalance(),
       chart.loadChartData(),
       pnl.load(),
-      transactions.loadStats(),
+      transactions.loadLifetimeStats(),
     ]);
   }
 
@@ -264,7 +264,8 @@ class _PositionScreenState extends State<PositionScreen> {
   /// Resultado de la cartera: lo que la app no mostraba en ninguna pantalla.
   Widget _result(BuildContext context) {
     final pnl = context.watch<PnlService>();
-    final interest = context.watch<TransactionService>().stats?.totalInterestUsd;
+    final interest =
+        context.watch<TransactionService>().lifetimeStats?.totalInterestUsd;
 
     if (!pnl.hasData && !pnl.isLoading && interest == null) {
       return const SizedBox.shrink();

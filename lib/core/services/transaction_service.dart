@@ -31,6 +31,14 @@ class TransactionService extends ChangeNotifier {
 
   List<Transaction> _transactions = [];
   TransactionStats? _stats;
+
+  /// Totales de SIEMPRE, sin ningún filtro aplicado.
+  ///
+  /// `_stats` sigue al filtro que tenga puesto la pantalla de Movimientos, y
+  /// Posición comparte este mismo servicio: con "Este mes" seleccionado y el
+  /// mes recién empezado, el card de intereses mostraba "+$0" debajo de un
+  /// encabezado que dice "desde el inicio".
+  TransactionStats? _lifetimeStats;
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String? _error;
@@ -46,6 +54,7 @@ class TransactionService extends ChangeNotifier {
 
   List<Transaction> get transactions => _transactions;
   TransactionStats? get stats => _stats;
+  TransactionStats? get lifetimeStats => _lifetimeStats;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
   String? get error => _error;
@@ -203,6 +212,18 @@ class TransactionService extends ChangeNotifier {
     } finally {
       _isLoadingMore = false;
       notifyListeners();
+    }
+  }
+
+  /// Los totales sin filtro. Se piden aparte y no los toca ninguna pantalla.
+  Future<void> loadLifetimeStats() async {
+    try {
+      final response =
+          await _apiService.get<Map<String, dynamic>>('/transactions/stats');
+      _lifetimeStats = TransactionStats.fromJson(response);
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) print('Error cargando totales de siempre: $e');
     }
   }
 

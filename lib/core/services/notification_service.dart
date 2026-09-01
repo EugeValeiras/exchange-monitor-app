@@ -70,6 +70,11 @@ class NotificationService extends ChangeNotifier {
       await _initializeFirebase();
       if (requestPermission) {
         await _setupMessaging();
+      } else {
+        // Sin esto `_hasPermission` arrancaba en false y se quedaba ahí: la
+        // pantalla mostraba "Sin permiso del sistema" en cada arranque aunque
+        // el permiso estuviera concedido desde hacía meses.
+        await refreshPermissionStatus();
       }
       _isInitialized = true;
       notifyListeners();
@@ -83,6 +88,37 @@ class NotificationService extends ChangeNotifier {
   /// Request notification permissions and setup messaging.
   /// Call this after showing a custom permission UI to the user.
   /// Returns true if permission was granted, false otherwise.
+  /// Consulta a iOS el estado real del permiso, sin pedirlo.
+  ///
+  /// Hay que rehacerlo cada vez que la pantalla se abre y cuando la app vuelve
+  /// del fondo: el permiso se puede conceder o revocar desde Ajustes del
+  /// sistema, fuera de la app, y el flag en memoria no se entera.
+  Future<void> refreshPermissionStatus() async {
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      _notificationSettings = settings;
+
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+
+      if (granted != _hasPermission) {
+        _hasPermission = granted;
+        notifyListeners();
+      }
+
+      // El permiso ya estaba dado de antes: hay que enganchar los listeners y
+      // el token igual, porque este arranque no pasó por _setupMessaging.
+      if (granted && _fcmToken == null) {
+        final messaging = FirebaseMessaging.instance;
+        await _acquireFcmToken(messaging);
+        _setupListeners(messaging);
+      }
+    } catch (e) {
+      debugPrint('[Notifications] No se pudo leer el permiso: $e');
+    }
+  }
+
   Future<bool> requestPermissionAndSetup() async {
     if (_permissionRequested && _hasPermission) return true;
 

@@ -18,15 +18,34 @@ class NotificationSettingsScreen extends StatefulWidget {
       _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
+class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
+    with WidgetsBindingObserver {
   static const _thresholds = [1, 3, 5, 10];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NotificationService>().loadSettings();
+      final service = context.read<NotificationService>();
+      service.loadSettings();
+      service.refreshPermissionStatus();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Volver de Ajustes de iOS con el permiso recién concedido tiene que
+    // reflejarse acá sin reiniciar la app.
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<NotificationService>().refreshPermissionStatus();
+    }
   }
 
   Future<void> _requestPermission() async {
