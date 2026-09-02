@@ -5,6 +5,7 @@ import '../../../core/services/balance_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/em_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/asset_logo.dart';
 import '../../../shared/widgets/em/em_primitives.dart';
 
 /// Notificaciones.
@@ -258,7 +259,7 @@ class _AssetPicker extends StatelessWidget {
             else
               for (final row in rows)
                 EmListRow(
-                  leading: EmAssetAvatar(asset: row.asset),
+                  leading: AssetLogo(asset: row.asset, size: 32),
                   title: row.asset,
                   subtitle: row.valueUsd == null
                       ? 'sin saldo'
