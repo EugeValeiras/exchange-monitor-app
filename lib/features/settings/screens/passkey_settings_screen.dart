@@ -165,6 +165,20 @@ class _ProveedorTile extends StatelessWidget {
 
   const _ProveedorTile({required this.credential});
 
+  /// Se manda el ALTO y el ancho lo pone la proporción del dibujo: dándole los
+  /// dos, flutter_svg ajusta por alto y deja que el ancho se desborde —así la
+  /// llave de Google, que es 1,82:1, salía a 25 puntos en una caja de 28 y se
+  /// quedaba sin aire—.
+  ///
+  /// 14 es la mitad del cuadradito, igual que el ícono de [EmIconTile], y sirve
+  /// para las marcas cuadradas. Una horizontal necesita su propio alto para
+  /// terminar midiendo lo mismo a lo ancho.
+  static const _altoBase = 14.0;
+  static const _altoCorregido = {'google-password-manager': 11.0};
+
+  static double _alto(String? providerId) =>
+      _altoCorregido[providerId] ?? _altoBase;
+
   @override
   Widget build(BuildContext context) {
     final logo = credential.logoAsset;
@@ -186,10 +200,11 @@ class _ProveedorTile extends StatelessWidget {
           color: EmColors.surfaceHigh,
           borderRadius: BorderRadius.circular(EmRadii.sm),
         ),
-        // La mitad del cuadradito, igual que el ícono de EmIconTile. El logo
-        // de Google es ancho y bajo, así que a 16 tocaba los bordes: sin aire
-        // parecía más grande que los demás aun midiendo lo mismo.
-        child: SvgPicture.asset(logo, width: 14, height: 14, fit: BoxFit.contain),
+        child: SvgPicture.asset(
+          logo,
+          height: _alto(credential.providerId),
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
