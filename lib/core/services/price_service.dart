@@ -15,12 +15,31 @@ class PriceService extends ChangeNotifier {
   bool _binanceConnected = false;
   bool _krakenConnected = false;
 
+  /// Cuántos pares tiene configurados cada exchange que PUEDE emitir
+  /// precios en vivo. Llega en `connection:status`.
+  Map<String, int> _configured = const {};
+
   bool get isConnected => _isConnected;
   bool get isConnecting => _isConnecting;
   Map<String, PriceUpdate> get prices => Map.unmodifiable(_prices);
   List<PriceUpdate> get priceList => _prices.values.toList();
   bool get binanceConnected => _binanceConnected;
   bool get krakenConnected => _krakenConnected;
+
+  /// Sólo Binance y Kraken emiten precios en vivo; Nexo no lo hace nunca.
+  static const _streamable = {'binance', 'kraken'};
+
+  /// ¿De este exchange ESPERAMOS precios en vivo? Tiene que poder
+  /// emitirlos y tener al menos un par configurado: Kraken sin pares no
+  /// tiene nada que enviar, y acusarlo de silencio era confundir.
+  bool expectsPrices(String exchange) {
+    final id = exchange.toLowerCase();
+    if (!_streamable.contains(id)) return false;
+    // Los futuros de Binance cuentan para Binance.
+    final configured = (_configured[id] ?? 0) +
+        (id == 'binance' ? (_configured['binanceFutures'] ?? 0) : 0);
+    return configured > 0;
+  }
 
   void setAuthToken(String? token) {
     _authToken = token;
@@ -125,6 +144,13 @@ class PriceService extends ChangeNotifier {
       if (data is Map<String, dynamic>) {
         _binanceConnected = data['binance'] == true;
         _krakenConnected = data['kraken'] == true;
+        final configured = data['configured'];
+        if (configured is Map) {
+          _configured = {
+            for (final e in configured.entries)
+              e.key.toString(): (e.value as num?)?.toInt() ?? 0,
+          };
+        }
         notifyListeners();
       }
     });

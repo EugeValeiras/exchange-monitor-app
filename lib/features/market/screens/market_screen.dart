@@ -50,10 +50,13 @@ class _MarketScreenState extends State<MarketScreen> {
         .toList()
       ..sort();
 
-    // Exchanges con saldo que no están emitiendo precios en vivo. Antes la
-    // pantalla simplemente no los mostraba y parecía que no existían.
+    // Exchanges con saldo de los que ESPERAMOS precios en vivo y no llegan.
+    // "Esperamos" es la parte importante: Nexo no emite precios nunca y
+    // Kraken sin pares configurados no tiene nada que mandar. Listarlos
+    // acusaba de silencio a quien nadie le había pedido hablar.
     final silent = balance.exchanges
         .map((e) => e.exchange)
+        .where(prices.expectsPrices)
         .where((e) => !sources.any((s) => s.toLowerCase() == e.toLowerCase()))
         .map(formatExchangeName)
         .toSet()
