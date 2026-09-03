@@ -9,11 +9,20 @@ class PasskeyCredential {
   final DateTime createdAt;
   final DateTime? lastUsedAt;
 
+  /// Quién guarda la llave, en legible: "Llavero de iCloud", "Chrome".
+  final String? provider;
+
+  /// El mismo proveedor pero como identificador, para elegir el logo. Las
+  /// credenciales creadas antes de que lo guardáramos vienen sin nada.
+  final String? providerId;
+
   PasskeyCredential({
     required this.id,
     required this.deviceName,
     required this.createdAt,
     this.lastUsedAt,
+    this.provider,
+    this.providerId,
   });
 
   factory PasskeyCredential.fromJson(Map<String, dynamic> json) {
@@ -24,8 +33,25 @@ class PasskeyCredential {
       lastUsedAt: json['lastUsedAt'] != null
           ? DateTime.parse(json['lastUsedAt'] as String)
           : null,
+      provider: json['provider'] as String?,
+      providerId: json['providerId'] as String?,
     );
   }
+
+  /// Los proveedores de los que tenemos logo. El resto se queda con la llave
+  /// genérica: preferible a un ícono que no identifica nada.
+  static const _conLogo = {
+    'apple',
+    'google',
+    'google-password-manager',
+    'microsoft',
+    '1password',
+    'bitwarden',
+  };
+
+  String? get logoAsset => _conLogo.contains(providerId)
+      ? 'assets/passkey-providers/$providerId.svg'
+      : null;
 }
 
 class PasskeyService extends ChangeNotifier {

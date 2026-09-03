@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/services/passkey_service.dart';
@@ -115,11 +116,7 @@ class _PasskeySettingsScreenState extends State<PasskeySettingsScreen> {
           else
             for (final credential in service.credentials)
               EmListRow(
-                leading: const EmIconTile(
-                  icon: Icons.key_outlined,
-                  color: EmColors.textSecondary,
-                  tinted: false,
-                ),
+                leading: _ProveedorTile(credential: credential),
                 title: credential.deviceName,
                 subtitle: credential.lastUsedAt != null
                     ? 'Último uso ${formatRelative(credential.lastUsedAt!)}'
@@ -154,6 +151,45 @@ class _PasskeySettingsScreenState extends State<PasskeySettingsScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// El cuadradito de la izquierda: el logo de quien guarda la llave, y la llave
+/// genérica para los que no declaran proveedor —que es justo lo que esa llave
+/// significa ahora—. Mismas medidas que [EmIconTile] para que las filas no se
+/// desalineen entre sí.
+class _ProveedorTile extends StatelessWidget {
+  final PasskeyCredential credential;
+
+  const _ProveedorTile({required this.credential});
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = credential.logoAsset;
+    if (logo == null) {
+      return const EmIconTile(
+        icon: Icons.key_outlined,
+        color: EmColors.textSecondary,
+        tinted: false,
+      );
+    }
+
+    return Semantics(
+      label: credential.provider,
+      child: Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: EmColors.surfaceHigh,
+          borderRadius: BorderRadius.circular(EmRadii.sm),
+        ),
+        // La mitad del cuadradito, igual que el ícono de EmIconTile. El logo
+        // de Google es ancho y bajo, así que a 16 tocaba los bordes: sin aire
+        // parecía más grande que los demás aun midiendo lo mismo.
+        child: SvgPicture.asset(logo, width: 14, height: 14, fit: BoxFit.contain),
       ),
     );
   }

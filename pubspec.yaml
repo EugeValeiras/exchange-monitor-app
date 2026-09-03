@@ -67,6 +67,7 @@ flutter:
 
   assets:
     - assets/logos/
+    - assets/passkey-providers/
     - assets/splash/
 
 # Native Splash Screen Configuration
