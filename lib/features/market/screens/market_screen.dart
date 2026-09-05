@@ -9,7 +9,7 @@ import '../../../core/theme/em_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/asset_logo.dart';
 import '../../../shared/widgets/em/em_primitives.dart';
-import '../../asset/screens/asset_detail_screen.dart';
+import 'market_detail_screen.dart';
 
 /// Mercado.
 ///
@@ -221,14 +221,17 @@ class _MarketScreenState extends State<MarketScreen> {
         ],
       ),
       showDivider: !isLast,
-      onTap: owned
-          ? () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AssetDetailScreen(asset: price.asset),
-                ),
-              )
-          : null,
+      // Todas las filas abren: el mercado de un par se puede mirar sin tener
+      // nada. Antes sólo respondían las que ya tenías, y el resto parecía rota.
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MarketDetailScreen(
+            symbol: price.symbol,
+            exchange: price.source ?? 'binance',
+          ),
+        ),
+      ),
     );
   }
 }

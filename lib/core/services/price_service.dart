@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../config/app_config.dart';
+import '../models/market.dart';
 import '../models/price.dart';
 
 class PriceService extends ChangeNotifier {
@@ -25,6 +26,18 @@ class PriceService extends ChangeNotifier {
   List<PriceUpdate> get priceList => _prices.values.toList();
   bool get binanceConnected => _binanceConnected;
   bool get krakenConnected => _krakenConnected;
+
+  /// El último libro recibido por par, mientras alguien lo esté mirando.
+  final Map<String, OrderBook> _books = {};
+  final Set<String> _bookKeys = {};
+  final Set<String> _bookUnsupported = {};
+
+  OrderBook? orderBook(String exchange, String symbol) =>
+      _books['${exchange.toLowerCase()}:${symbol.toUpperCase()}'];
+
+  /// El exchange no emite profundidad por WebSocket: hay que pedirla por REST.
+  bool orderBookUnsupported(String exchange, String symbol) =>
+      _bookUnsupported.contains('${exchange.toLowerCase()}:${symbol.toUpperCase()}');
 
   /// Sólo Binance y Kraken emiten precios en vivo; Nexo no lo hace nunca.
   static const _streamable = {'binance', 'kraken'};
@@ -77,6 +90,13 @@ class PriceService extends ChangeNotifier {
       // Re-subscribe to symbols
       if (_subscribedSymbols.isNotEmpty) {
         subscribe(_subscribedSymbols.toList());
+      }
+      for (final key in _bookKeys) {
+        final parts = key.split(':');
+        _socket?.emit('orderbook:subscribe', {
+          'exchange': parts[0],
+          'symbol': parts[1],
+        });
       }
     });
 
@@ -140,6 +160,24 @@ class PriceService extends ChangeNotifier {
       }
     });
 
+    _socket!.on('orderbook:update', (data) {
+      if (data is Map<String, dynamic>) {
+        final book = OrderBook.fromJson(data);
+        final ex = (data['exchange'] as String? ?? '').toLowerCase();
+        _books['$ex:${book.symbol.toUpperCase()}'] = book;
+        notifyListeners();
+      }
+    });
+
+    _socket!.on('orderbook:unsupported', (data) {
+      if (data is Map<String, dynamic>) {
+        final ex = (data['exchange'] as String? ?? '').toLowerCase();
+        final sym = (data['symbol'] as String? ?? '').toUpperCase();
+        _bookUnsupported.add('$ex:$sym');
+        notifyListeners();
+      }
+    });
+
     _socket!.on('connection:status', (data) {
       if (data is Map<String, dynamic>) {
         _binanceConnected = data['binance'] == true;
@@ -165,6 +203,8 @@ class PriceService extends ChangeNotifier {
     _isConnected = false;
     _isConnecting = false;
     _subscribedSymbols.clear();
+    _bookKeys.clear();
+    _books.clear();
     notifyListeners();
   }
 
@@ -179,6 +219,33 @@ class PriceService extends ChangeNotifier {
     _subscribedSymbols.removeAll(symbols);
     if (_isConnected) {
       _socket?.emit('unsubscribe', symbols);
+    }
+  }
+
+  /// Pide el libro de un par. El servidor manda hasta cuatro veces por
+  /// segundo mientras haya alguien mirando, así que hay que soltarlo al salir.
+  void subscribeOrderBook(String exchange, String symbol) {
+    final key = '${exchange.toLowerCase()}:${symbol.toUpperCase()}';
+    if (!_bookKeys.add(key)) return;
+    if (_isConnected) {
+      _socket?.emit('orderbook:subscribe', {
+        'exchange': exchange.toLowerCase(),
+        'symbol': symbol.toUpperCase(),
+      });
+    } else {
+      connect();
+    }
+  }
+
+  void unsubscribeOrderBook(String exchange, String symbol) {
+    final key = '${exchange.toLowerCase()}:${symbol.toUpperCase()}';
+    if (!_bookKeys.remove(key)) return;
+    _books.remove(key);
+    if (_isConnected) {
+      _socket?.emit('orderbook:unsubscribe', {
+        'exchange': exchange.toLowerCase(),
+        'symbol': symbol.toUpperCase(),
+      });
     }
   }
 
