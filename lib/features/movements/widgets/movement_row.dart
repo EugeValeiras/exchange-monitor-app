@@ -112,23 +112,51 @@ class GroupedMovementRow extends StatefulWidget {
 class _GroupedMovementRowState extends State<GroupedMovementRow> {
   bool _expanded = false;
 
+  /// Un traspaso entre exchanges propios: sus puntas se anulan entre sí.
+  bool get _esTraspaso => widget.transactions.first.transferGroupId != null;
+
+  /// De dónde salió y adónde entró. Es lo que el traspaso tiene para decir.
+  ({Transaction salida, Transaction entrada})? get _puntas {
+    if (!_esTraspaso || widget.transactions.length < 2) return null;
+    Transaction? salida, entrada;
+    for (final t in widget.transactions) {
+      if (t.type == TransactionType.withdrawal) salida = t;
+      if (t.type == TransactionType.deposit) entrada = t;
+    }
+    return (salida == null || entrada == null)
+        ? null
+        : (salida: salida, entrada: entrada);
+  }
+
   @override
   Widget build(BuildContext context) {
     final first = widget.transactions.first;
-    final style = movementStyle(first);
+    final puntas = _puntas;
+    final style = puntas != null
+        ? (icon: Icons.swap_horiz, color: EmColors.flow)
+        : movementStyle(first);
 
-    final totalAmount = widget.transactions
-        .fold<double>(0, (sum, t) => sum + t.signedAmount);
+    // Un traspaso no mueve tu plata: sumar +0,579 y −0,579 daría cero, que es
+    // cierto y no dice nada. Se muestra CUÁNTO se movió, sin signo.
+    final totalAmount = puntas != null
+        ? puntas.entrada.amount.abs()
+        : widget.transactions.fold<double>(0, (sum, t) => sum + t.signedAmount);
 
     // Sólo se suma en dólares si TODOS los movimientos se pueden valorizar.
+    // En un traspaso se muestra el valor de lo movido, no la suma de las dos
+    // puntas, que se cancelan.
     double? totalUsd = 0;
-    for (final t in widget.transactions) {
-      final usd = t.usdValue;
-      if (usd == null) {
-        totalUsd = null;
-        break;
+    if (puntas != null) {
+      totalUsd = puntas.entrada.usdValue?.abs();
+    } else {
+      for (final t in widget.transactions) {
+        final usd = t.usdValue;
+        if (usd == null) {
+          totalUsd = null;
+          break;
+        }
+        totalUsd = totalUsd! + usd;
       }
-      totalUsd = totalUsd! + usd;
     }
 
     return Column(
@@ -157,14 +185,16 @@ class _GroupedMovementRowState extends State<GroupedMovementRow> {
                         children: [
                           Flexible(
                             child: Text(
-                              movementTitle(first),
+                              puntas != null
+                                  ? 'Traspaso ${first.asset.toUpperCase()}'
+                                  : movementTitle(first),
                               style: EmText.rowLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: EmSpace.sm - 1),
-                          Container(
+                          if (puntas == null) Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: EmSpace.xs + 2,
                               vertical: 1,
@@ -183,8 +213,13 @@ class _GroupedMovementRowState extends State<GroupedMovementRow> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${formatTime(first.timestamp)} · '
-                        '${formatExchangeName(first.exchange)}',
+                        puntas != null
+                            // De dónde a dónde: es la única pregunta que un
+                            // traspaso deja abierta.
+                            ? '${formatExchangeName(puntas.salida.exchange)} → '
+                                '${formatExchangeName(puntas.entrada.exchange)}'
+                            : '${formatTime(first.timestamp)} · '
+                                '${formatExchangeName(first.exchange)}',
                         style: EmText.meta,
                       ),
                     ],
@@ -196,7 +231,9 @@ class _GroupedMovementRowState extends State<GroupedMovementRow> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      formatSignedQuantity(totalAmount, first.asset),
+                      puntas != null
+                          ? formatAssetQuantity(totalAmount, first.asset)
+                          : formatSignedQuantity(totalAmount, first.asset),
                       style: EmText.data.copyWith(fontSize: 14, color: style.color),
                     ),
                     if (totalUsd != null) ...[

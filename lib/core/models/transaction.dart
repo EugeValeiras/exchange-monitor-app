@@ -76,6 +76,10 @@ class Transaction extends Equatable {
   final String? side;
   final DateTime timestamp;
 
+  /// Las dos puntas de un traspaso entre exchanges propios comparten este id.
+  /// Sacar de uno y recibir en otro no son dos hechos, es el mismo.
+  final String? transferGroupId;
+
   const Transaction({
     required this.id,
     required this.exchange,
@@ -90,6 +94,7 @@ class Transaction extends Equatable {
     this.pair,
     this.side,
     required this.timestamp,
+    this.transferGroupId,
   });
 
   bool get isBuy => side?.toLowerCase() == 'buy';
@@ -155,6 +160,7 @@ class Transaction extends Equatable {
       pair: json['pair'] as String?,
       side: json['side'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      transferGroupId: json['transferGroupId'] as String?,
     );
   }
 

@@ -96,9 +96,15 @@ class TransactionService extends ChangeNotifier {
     ];
   }
 
-  /// Pliega los movimientos repetitivos de un día. Sólo se pliegan intereses y
-  /// comisiones: un depósito o una operación son eventos con identidad propia
-  /// que el usuario quiere ver uno por uno, aunque se repitan.
+  /// Pliega los movimientos de un día que son uno solo.
+  ///
+  /// Dos casos distintos. Los intereses y comisiones se pliegan por REPETICIÓN
+  /// —hacen falta tres o más, si no tapan todo lo demás— y un depósito o una
+  /// operación no se pliegan nunca: son eventos con identidad propia.
+  ///
+  /// Un traspaso entre tus exchanges es otra cosa: sus dos puntas son el mismo
+  /// hecho contado dos veces, así que se juntan siempre, sin umbral. La API
+  /// dice cuáles van juntas con `transferGroupId`.
   List<MovementEntry> _groupSameKind(List<Transaction> dayItems) {
     const groupable = {TransactionType.interest, TransactionType.fee};
     const threshold = 3;
@@ -107,9 +113,12 @@ class TransactionService extends ChangeNotifier {
     final order = <String>[];
 
     for (final t in dayItems) {
-      final key = groupable.contains(t.type)
-          ? '${t.type.name}|${t.asset}|${t.exchange}'
-          : 'single|${t.id}';
+      final traspaso = t.transferGroupId;
+      final key = traspaso != null
+          ? 'transfer|$traspaso'
+          : groupable.contains(t.type)
+              ? '${t.type.name}|${t.asset}|${t.exchange}'
+              : 'single|${t.id}';
       if (!buckets.containsKey(key)) order.add(key);
       buckets.putIfAbsent(key, () => []).add(t);
     }
@@ -117,7 +126,9 @@ class TransactionService extends ChangeNotifier {
     final entries = <MovementEntry>[];
     for (final key in order) {
       final items = buckets[key]!;
-      if (items.length >= threshold) {
+      // Un traspaso se junta con sus dos puntas; el resto necesita repetirse.
+      final minimo = key.startsWith('transfer|') ? 2 : threshold;
+      if (items.length >= minimo) {
         entries.add(MovementEntry(items));
       } else {
         for (final t in items) {
