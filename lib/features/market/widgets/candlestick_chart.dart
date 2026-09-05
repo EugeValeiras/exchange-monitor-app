@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/market.dart';
 import '../../../core/theme/em_tokens.dart';
+import 'chart_viewport.dart';
 
 /// Velas japonesas.
 ///
@@ -36,31 +37,31 @@ class CandlestickChart extends StatefulWidget {
 }
 
 class _CandlestickChartState extends State<CandlestickChart> {
-  /// Cuántas velas entran en pantalla y desde cuál. Pellizcar cambia la
-  /// cantidad; arrastrar, el punto de partida.
-  double _visible = 0;
-  double _offset = 0;
-  double _visibleAtGestureStart = 0;
-  double _offsetAtGestureStart = 0;
+  ChartViewport _view = const ChartViewport(total: 0);
+  double _scaleAlEmpezar = 1;
 
-  static const _minVisible = 12.0;
+  /// Ancho que ocupa la escala de precios: no es zona de velas, y contarla
+  /// hacía que el arrastre corriera de más.
+  static const _axisWidth = 54.0;
 
-  int get _total => widget.candles.length;
-
-  /// Las velas que se ven ahora. Sin zoom, todas.
-  List<Candle> get _slice {
-    if (_total == 0) return const [];
-    final n = _visible <= 0 ? _total : _visible.clamp(_minVisible, _total.toDouble());
-    final start = _offset.clamp(0.0, (_total - n).clamp(0.0, _total.toDouble()));
-    return widget.candles.sublist(start.round(), (start + n).round().clamp(0, _total));
+  @override
+  void initState() {
+    super.initState();
+    _view = ChartViewport(total: widget.candles.length);
   }
 
-  bool get _zoomed => _visible > 0 && _visible < _total;
+  @override
+  void didUpdateWidget(CandlestickChart old) {
+    super.didUpdateWidget(old);
+    // Llega una vela nueva: la ventana se adapta sin perder dónde estabas.
+    if (old.candles.length != widget.candles.length) {
+      _view = _view.withTotal(widget.candles.length);
+    }
+  }
 
-  void _reset() => setState(() {
-        _visible = 0;
-        _offset = 0;
-      });
+  List<Candle> get _slice => _view.slice(widget.candles);
+
+  void _reset() => setState(() => _view = _view.reset());
 
   @override
   Widget build(BuildContext context) {
@@ -81,20 +82,18 @@ class _CandlestickChartState extends State<CandlestickChart> {
         GestureDetector(
           // Pellizcar y arrastrar sobre el mismo gesto: en un gráfico, alejar
           // y correrse son la misma intención de "mostrame otra ventana".
-          onScaleStart: (_) {
-            _visibleAtGestureStart = _visible <= 0 ? _total.toDouble() : _visible;
-            _offsetAtGestureStart = _offset;
-          },
+          onScaleStart: (_) => _scaleAlEmpezar = 1,
           onScaleUpdate: (d) {
             setState(() {
-              if (d.scale != 1.0) {
-                _visible = (_visibleAtGestureStart / d.scale)
-                    .clamp(_minVisible, _total.toDouble());
+              // El zoom llega acumulado desde el inicio del gesto; el arrastre,
+              // como delta de este frame. Cada uno se aplica como corresponde:
+              // mezclarlos era lo que dejaba el arrastre sin efecto.
+              if (d.scale != _scaleAlEmpezar && d.scale > 0) {
+                _view = _view.zoom(d.scale / _scaleAlEmpezar);
+                _scaleAlEmpezar = d.scale;
               }
-              final ancho = context.size?.width ?? 1;
-              final porPixel = (_visible <= 0 ? _total : _visible) / ancho;
-              _offset = (_offsetAtGestureStart - d.focalPointDelta.dx * porPixel)
-                  .clamp(0.0, (_total - _visible).clamp(0.0, _total.toDouble()));
+              final ancho = (context.size?.width ?? _axisWidth * 2) - _axisWidth;
+              _view = _view.pan(-d.focalPointDelta.dx * _view.candlesPerPixel(ancho));
             });
           },
           onDoubleTap: _reset,
@@ -111,7 +110,7 @@ class _CandlestickChartState extends State<CandlestickChart> {
             ),
           ),
         ),
-        if (_zoomed)
+        if (_view.isZoomed)
           Positioned(
             top: 0,
             left: 0,

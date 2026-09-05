@@ -156,6 +156,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
           ],
         ),
         actions: [
+          if (holding != null && holding.total > 0) _holdingChip(holding, live),
           IconButton(
             tooltip: favorites.isFavorite(_base) ? 'Quitar de favoritos' : 'Marcar favorito',
             icon: Icon(
@@ -223,7 +224,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
               const EmSectionHeader(title: 'Libro de órdenes'),
               const SizedBox(height: EmSpace.sm),
               OrderBookView(book: book, live: isLive),
-              if (holding != null && holding.total > 0) ...[
+              if (holding != null && holding.total > 0 && holding.avgBuyPriceUsdt != null) ...[
                 const SizedBox(height: EmSpace.xl),
                 const EmSectionHeader(title: 'Tu posición'),
                 const SizedBox(height: EmSpace.sm),
@@ -231,6 +232,57 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Tu tenencia, arriba del todo.
+  ///
+  /// La pregunta "¿tengo de esto?" se contesta de un vistazo o no sirve:
+  /// abajo, después del gráfico y del libro, había que ir a buscarla. Va sólo
+  /// la cantidad —el precio promedio y el resultado no entran en una barra— y
+  /// abre el detalle del activo.
+  Widget _holdingChip(AssetBalance holding, dynamic live) {
+    final price = live?.price as double?;
+    final avg = holding.avgBuyPriceUsdt;
+    final delta = (avg != null && avg > 0 && price != null) ? (price - avg) / avg * 100 : null;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => AssetDetailScreen(asset: _base)),
+      ),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: EmSpace.sm, vertical: 4),
+        constraints: const BoxConstraints(maxWidth: 132),
+        decoration: BoxDecoration(
+          color: EmColors.surfaceHigh,
+          borderRadius: BorderRadius.circular(EmRadii.sm),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              formatAssetAmount(holding.total),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: EmText.meta.copyWith(
+                color: EmColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (delta != null)
+              Text(
+                formatSignedPercent(delta),
+                maxLines: 1,
+                style: EmText.section.copyWith(color: EmDelta.colorFor(delta)),
+              ),
+          ],
         ),
       ),
     );
