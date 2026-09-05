@@ -8,7 +8,7 @@ import '../../../core/theme/em_tokens.dart';
 /// con mecha, y ninguna librería de líneas lo hace sin pelear. Además así el
 /// volumen comparte el eje horizontal exacto del precio, que es la mitad de
 /// para qué sirve mirarlos juntos.
-class CandlestickChart extends StatelessWidget {
+class CandlestickChart extends StatefulWidget {
   final List<Candle> candles;
 
   /// El precio en vivo, para la línea punteada del último valor.
@@ -17,6 +17,9 @@ class CandlestickChart extends StatelessWidget {
   /// Tu costo promedio, si tenés posición: la referencia contra la que mirás.
   final double? avgCost;
 
+  /// Tus órdenes puestas, como líneas al precio al que esperan.
+  final List<OpenOrder> orders;
+
   final double height;
 
   const CandlestickChart({
@@ -24,14 +27,46 @@ class CandlestickChart extends StatelessWidget {
     required this.candles,
     this.livePrice,
     this.avgCost,
+    this.orders = const [],
     this.height = 260,
   });
 
   @override
+  State<CandlestickChart> createState() => _CandlestickChartState();
+}
+
+class _CandlestickChartState extends State<CandlestickChart> {
+  /// Cuántas velas entran en pantalla y desde cuál. Pellizcar cambia la
+  /// cantidad; arrastrar, el punto de partida.
+  double _visible = 0;
+  double _offset = 0;
+  double _visibleAtGestureStart = 0;
+  double _offsetAtGestureStart = 0;
+
+  static const _minVisible = 12.0;
+
+  int get _total => widget.candles.length;
+
+  /// Las velas que se ven ahora. Sin zoom, todas.
+  List<Candle> get _slice {
+    if (_total == 0) return const [];
+    final n = _visible <= 0 ? _total : _visible.clamp(_minVisible, _total.toDouble());
+    final start = _offset.clamp(0.0, (_total - n).clamp(0.0, _total.toDouble()));
+    return widget.candles.sublist(start.round(), (start + n).round().clamp(0, _total));
+  }
+
+  bool get _zoomed => _visible > 0 && _visible < _total;
+
+  void _reset() => setState(() {
+        _visible = 0;
+        _offset = 0;
+      });
+
+  @override
   Widget build(BuildContext context) {
-    if (candles.isEmpty) {
+    if (widget.candles.isEmpty) {
       return SizedBox(
-        height: height,
+        height: widget.height,
         child: Center(
           child: Text(
             'Sin velas para este intervalo.',
@@ -41,16 +76,62 @@ class CandlestickChart extends StatelessWidget {
       );
     }
 
-    return SizedBox(
-      height: height,
-      width: double.infinity,
-      child: CustomPaint(
-        painter: _CandlePainter(
-          candles: candles,
-          livePrice: livePrice,
-          avgCost: avgCost,
+    return Stack(
+      children: [
+        GestureDetector(
+          // Pellizcar y arrastrar sobre el mismo gesto: en un gráfico, alejar
+          // y correrse son la misma intención de "mostrame otra ventana".
+          onScaleStart: (_) {
+            _visibleAtGestureStart = _visible <= 0 ? _total.toDouble() : _visible;
+            _offsetAtGestureStart = _offset;
+          },
+          onScaleUpdate: (d) {
+            setState(() {
+              if (d.scale != 1.0) {
+                _visible = (_visibleAtGestureStart / d.scale)
+                    .clamp(_minVisible, _total.toDouble());
+              }
+              final ancho = context.size?.width ?? 1;
+              final porPixel = (_visible <= 0 ? _total : _visible) / ancho;
+              _offset = (_offsetAtGestureStart - d.focalPointDelta.dx * porPixel)
+                  .clamp(0.0, (_total - _visible).clamp(0.0, _total.toDouble()));
+            });
+          },
+          onDoubleTap: _reset,
+          child: SizedBox(
+            height: widget.height,
+            width: double.infinity,
+            child: CustomPaint(
+              painter: _CandlePainter(
+                candles: _slice,
+                livePrice: widget.livePrice,
+                avgCost: widget.avgCost,
+                orders: widget.orders,
+              ),
+            ),
+          ),
         ),
-      ),
+        if (_zoomed)
+          Positioned(
+            top: 0,
+            left: 0,
+            child: GestureDetector(
+              onTap: _reset,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: EmColors.surfaceTop,
+                  borderRadius: BorderRadius.circular(EmRadii.sm),
+                ),
+                child: Text(
+                  '${_slice.length} velas · tocá para ver todo',
+                  style: EmText.meta.copyWith(color: EmColors.textSecondary),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -59,6 +140,7 @@ class _CandlePainter extends CustomPainter {
   final List<Candle> candles;
   final double? livePrice;
   final double? avgCost;
+  final List<OpenOrder> orders;
 
   /// Franja inferior para el volumen, como fracción del alto.
   static const _volumeShare = 0.18;
@@ -67,7 +149,12 @@ class _CandlePainter extends CustomPainter {
   /// Ancho reservado a la escala de precios, a la derecha.
   static const _axisWidth = 54.0;
 
-  _CandlePainter({required this.candles, this.livePrice, this.avgCost});
+  _CandlePainter({
+    required this.candles,
+    this.livePrice,
+    this.avgCost,
+    this.orders = const [],
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -151,6 +238,35 @@ class _CandlePainter extends CustomPainter {
       _dashed(canvas, yOf(live), plotWidth, color);
       _label(canvas, _money(live), plotWidth + 6, yOf(live), color: color);
     }
+
+    // ── tus órdenes esperando ───────────────────────────────────────────────
+    // Enteras y no punteadas: una orden puesta no es una referencia calculada,
+    // es algo que va a pasar si el precio llega ahí.
+    for (final o in orders) {
+      final p = o.chartPrice;
+      if (p == null || p < lo || p > hi) continue;
+      final y = yOf(p);
+      final color = o.isBuy ? EmColors.up : EmColors.down;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(plotWidth, y),
+        Paint()
+          ..color = color.withValues(alpha: 0.75)
+          ..strokeWidth = 1.2,
+      );
+      // Un triángulo en el borde: de qué lado empuja la orden.
+      final path = Path();
+      if (o.isBuy) {
+        path.moveTo(0, y - 4);
+        path.lineTo(6, y);
+        path.lineTo(0, y + 4);
+      } else {
+        path.moveTo(0, y - 4);
+        path.lineTo(6, y);
+        path.lineTo(0, y + 4);
+      }
+      canvas.drawPath(path..close(), Paint()..color = color);
+    }
   }
 
   void _dashed(Canvas canvas, double y, double width, Color color) {
@@ -191,5 +307,8 @@ class _CandlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CandlePainter old) =>
-      old.candles != candles || old.livePrice != livePrice || old.avgCost != avgCost;
+      old.candles != candles ||
+      old.livePrice != livePrice ||
+      old.avgCost != avgCost ||
+      old.orders != orders;
 }

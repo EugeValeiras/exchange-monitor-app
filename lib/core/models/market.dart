@@ -119,3 +119,76 @@ class OrderBook {
     return (s == null || a == null || a == 0) ? null : s / a * 100;
   }
 }
+
+/// Una orden puesta en el exchange que todavía no se ejecutó.
+class OpenOrder {
+  final String id;
+  final String symbol;
+  final bool isBuy;
+  final String type;
+
+  /// Precio de la orden. Null en las de mercado.
+  final double? price;
+
+  /// Precio al que se dispara una condicional. Es el que la ubica en el
+  /// gráfico cuando la orden todavía no tiene precio propio.
+  final double? triggerPrice;
+
+  final double amount;
+  final double filled;
+  final double remaining;
+  final DateTime? createdAt;
+
+  const OpenOrder({
+    required this.id,
+    required this.symbol,
+    required this.isBuy,
+    required this.type,
+    required this.amount,
+    required this.filled,
+    required this.remaining,
+    this.price,
+    this.triggerPrice,
+    this.createdAt,
+  });
+
+  /// Dónde se dibuja: el precio propio, y si no lo tiene, el de disparo.
+  double? get chartPrice => price ?? triggerPrice;
+
+  /// Cuánto se ejecutó ya, de 0 a 1.
+  double get progress => amount > 0 ? (filled / amount).clamp(0.0, 1.0) : 0;
+
+  factory OpenOrder.fromJson(Map<String, dynamic> json) => OpenOrder(
+        id: json['id']?.toString() ?? '',
+        symbol: json['symbol'] as String? ?? '',
+        isBuy: (json['side'] as String? ?? 'buy') != 'sell',
+        type: json['type'] as String? ?? '',
+        price: (json['price'] as num?)?.toDouble(),
+        triggerPrice: (json['triggerPrice'] as num?)?.toDouble(),
+        amount: (json['amount'] as num?)?.toDouble() ?? 0,
+        filled: (json['filled'] as num?)?.toDouble() ?? 0,
+        remaining: (json['remaining'] as num?)?.toDouble() ?? 0,
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+      );
+}
+
+class OpenOrders {
+  final String exchange;
+  final bool supported;
+  final List<OpenOrder> orders;
+
+  const OpenOrders({
+    required this.exchange,
+    required this.supported,
+    required this.orders,
+  });
+
+  factory OpenOrders.fromJson(Map<String, dynamic> json) => OpenOrders(
+        exchange: json['exchange'] as String? ?? '',
+        supported: json['supported'] as bool? ?? false,
+        orders: ((json['orders'] as List<dynamic>?) ?? const [])
+            .map((o) => OpenOrder.fromJson(o as Map<String, dynamic>))
+            .toList(),
+      );
+}
+

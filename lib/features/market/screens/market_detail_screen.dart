@@ -56,21 +56,44 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
     final prices = context.read<PriceService>();
     prices.subscribe([widget.symbol]);
     prices.subscribeOrderBook(widget.exchange, widget.symbol);
+    _subscribeKlines();
     // Si el exchange no manda profundidad, el servidor avisa y caemos a REST.
     WidgetsBinding.instance.addPostFrameCallback((_) => _fallbackBook());
   }
 
   @override
   void dispose() {
-    // El libro son cuatro mensajes por segundo: soltarlo al salir no es una
-    // optimización, es no dejar el caño abierto.
-    context.read<PriceService>().unsubscribeOrderBook(widget.exchange, widget.symbol);
+    // El libro son cuatro mensajes por segundo y las velas un par: soltarlos
+    // al salir no es una optimización, es no dejar el caño abierto.
+    final prices = context.read<PriceService>();
+    prices.unsubscribeOrderBook(widget.exchange, widget.symbol);
+    prices.unsubscribeKlines(widget.exchange, widget.symbol, _timeframe.api);
     _market.dispose();
     super.dispose();
   }
 
-  Future<void> _load() =>
-      _market.load(exchange: widget.exchange, symbol: widget.symbol, timeframe: _timeframe);
+  void _subscribeKlines() {
+    context.read<PriceService>().subscribeKlines(
+          widget.exchange,
+          widget.symbol,
+          _timeframe.api,
+          _market.applyLiveCandle,
+        );
+  }
+
+  Future<void> _load() async {
+    await _market.load(
+      exchange: widget.exchange,
+      symbol: widget.symbol,
+      timeframe: _timeframe,
+    );
+    if (mounted) {
+      await _market.loadOpenOrders(
+        exchange: widget.exchange,
+        symbol: widget.symbol,
+      );
+    }
+  }
 
   Future<void> _fallbackBook() async {
     await Future<void>.delayed(const Duration(seconds: 3));
@@ -86,7 +109,12 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
 
   void _setTimeframe(MarketTimeframe tf) {
     if (tf == _timeframe) return;
+    // Las velas en vivo son de un intervalo concreto: hay que soltar el
+    // anterior antes de pedir el nuevo, o llegarían las dos series mezcladas.
+    context.read<PriceService>()
+        .unsubscribeKlines(widget.exchange, widget.symbol, _timeframe.api);
     setState(() => _timeframe = tf);
+    _subscribeKlines();
     _load();
   }
 
@@ -176,12 +204,20 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
                   candles: _market.ohlc?.candles ?? const [],
                   livePrice: live?.price,
                   avgCost: holding?.avgBuyPriceUsdt,
+                  orders: _market.ordersFor(widget.symbol),
                 ),
               if (_market.error != null) ...[
                 const SizedBox(height: EmSpace.sm),
                 const EmNotice(
                   text: "No se pudieron actualizar las velas. Deslizá para reintentar.",
                 ),
+              ],
+              if (_market.ordersFor(widget.symbol).isNotEmpty) ...[
+                const SizedBox(height: EmSpace.xl),
+                const EmSectionHeader(title: 'Tus órdenes abiertas'),
+                const SizedBox(height: EmSpace.sm),
+                for (final o in _market.ordersFor(widget.symbol))
+                  _order(o, last: o == _market.ordersFor(widget.symbol).last),
               ],
               const SizedBox(height: EmSpace.xl),
               const EmSectionHeader(title: 'Libro de órdenes'),
@@ -250,6 +286,31 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  /// Una orden esperando. El subtítulo dice cuánto lleva ejecutado sólo
+  /// cuando algo se ejecutó: "0 de 0,5" en todas las filas es ruido.
+  Widget _order(OpenOrder o, {required bool last}) {
+    final color = o.isBuy ? EmColors.up : EmColors.down;
+    final precio = o.chartPrice;
+    return EmListRow(
+      leading: EmIconTile(
+        icon: o.isBuy ? Icons.south_west : Icons.north_east,
+        color: color,
+        tinted: false,
+      ),
+      title: '${o.isBuy ? 'Compra' : 'Venta'} de ${formatAssetAmount(o.amount)} $_base',
+      subtitle: [
+        o.type.replaceAll('_', ' '),
+        if (o.filled > 0)
+          '${formatAssetAmount(o.filled)} ejecutado',
+      ].join(' · '),
+      trailing: Text(
+        precio == null ? 'a mercado' : formatQuotePrice(precio, _quote),
+        style: EmText.data.copyWith(fontSize: 14, color: color),
+      ),
+      showDivider: !last,
     );
   }
 

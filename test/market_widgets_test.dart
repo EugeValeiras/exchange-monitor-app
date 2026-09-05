@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:exchange_monitor/core/models/market.dart';
+import 'package:exchange_monitor/core/services/api_service.dart';
+import 'package:exchange_monitor/core/services/market_service.dart';
 import 'package:exchange_monitor/features/market/widgets/candlestick_chart.dart';
 import 'package:exchange_monitor/features/market/widgets/order_book_view.dart';
 
@@ -101,6 +103,82 @@ void main() {
     });
   });
 
+  group('MarketService · la vela que llega por WebSocket', () {
+    MarketService conVelas(List<Candle> velas) {
+      final s = MarketService(_ApiFalsa());
+      s.ohlcParaTest = Ohlc(
+        exchange: 'binance',
+        symbol: 'BTC/USDT',
+        timeframe: '1d',
+        candles: velas,
+      );
+      return s;
+    }
+
+    final t0 = DateTime(2026, 6, 3);
+    final t1 = DateTime(2026, 6, 4);
+
+    test('la del mismo período reemplaza, no duplica', () {
+      final s = conVelas([vela(100, 110, 95, 105)]);
+      s.applyLiveCandle(Candle(
+        time: t0, open: 100, high: 130, low: 95, close: 128, volume: 20));
+
+      expect(s.ohlc!.candles, hasLength(1));
+      expect(s.ohlc!.candles.single.close, 128);
+      expect(s.ohlc!.candles.single.high, 130);
+    });
+
+    test('la de un período nuevo se agrega', () {
+      final s = conVelas([vela(100, 110, 95, 105)]);
+      s.applyLiveCandle(Candle(
+        time: t1, open: 105, high: 112, low: 104, close: 111, volume: 5));
+
+      expect(s.ohlc!.candles, hasLength(2));
+      expect(s.ohlc!.candles.last.close, 111);
+    });
+
+    test('una vela vieja se descarta: llegó tarde', () {
+      final s = conVelas([Candle(
+        time: t1, open: 105, high: 112, low: 104, close: 111, volume: 5)]);
+      s.applyLiveCandle(Candle(
+        time: t0, open: 1, high: 1, low: 1, close: 1, volume: 1));
+
+      expect(s.ohlc!.candles, hasLength(1));
+      expect(s.ohlc!.candles.single.close, 111);
+    });
+
+    test('sin velas cargadas no hace nada', () {
+      final s = MarketService(_ApiFalsa());
+      s.applyLiveCandle(vela(1, 1, 1, 1));
+      expect(s.ohlc, isNull);
+    });
+  });
+
+  group('OpenOrder', () {
+    test('se ubica por su precio, y si no tiene, por el de disparo', () {
+      final limite = OpenOrder.fromJson({
+        'id': '1', 'symbol': 'BTC/USDT', 'side': 'buy', 'type': 'limit',
+        'price': 70000, 'amount': 0.5, 'filled': 0, 'remaining': 0.5,
+      });
+      final stop = OpenOrder.fromJson({
+        'id': '2', 'symbol': 'BTC/USDT', 'side': 'sell', 'type': 'stop_loss',
+        'price': null, 'triggerPrice': 60000, 'amount': 1, 'filled': 0.25,
+      });
+
+      expect(limite.chartPrice, 70000);
+      expect(limite.isBuy, isTrue);
+      expect(stop.chartPrice, 60000);
+      expect(stop.isBuy, isFalse);
+      expect(stop.progress, 0.25);
+    });
+
+    test('una orden sin cantidad no divide por cero', () {
+      final o = OpenOrder.fromJson({'id': '3', 'symbol': 'X/Y', 'side': 'buy'});
+      expect(o.progress, 0);
+      expect(o.chartPrice, isNull);
+    });
+  });
+
   group('OrderBookView', () {
     testWidgets('muestra los dos lados y el spread', (tester) async {
       final b = OrderBook(
@@ -134,4 +212,10 @@ void main() {
       expect(find.textContaining('Sin libro'), findsOneWidget);
     });
   });
+}
+
+/// El servicio no toca la red en estas pruebas.
+class _ApiFalsa implements ApiService {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
 }

@@ -39,6 +39,14 @@ class PriceService extends ChangeNotifier {
   bool orderBookUnsupported(String exchange, String symbol) =>
       _bookUnsupported.contains('${exchange.toLowerCase()}:${symbol.toUpperCase()}');
 
+  /// Quién quiere enterarse de cada vela nueva. La pantalla se anota al entrar
+  /// y se borra al salir.
+  final Map<String, void Function(Candle)> _klineListeners = {};
+  final Set<String> _klineKeys = {};
+
+  String _klineKey(String exchange, String symbol, String timeframe) =>
+      '${exchange.toLowerCase()}:${symbol.toUpperCase()}:${timeframe.toLowerCase()}';
+
   /// Sólo Binance y Kraken emiten precios en vivo; Nexo no lo hace nunca.
   static const _streamable = {'binance', 'kraken'};
 
@@ -96,6 +104,14 @@ class PriceService extends ChangeNotifier {
         _socket?.emit('orderbook:subscribe', {
           'exchange': parts[0],
           'symbol': parts[1],
+        });
+      }
+      for (final key in _klineKeys) {
+        final parts = key.split(':');
+        _socket?.emit('kline:subscribe', {
+          'exchange': parts[0],
+          'symbol': parts[1],
+          'timeframe': parts[2],
         });
       }
     });
@@ -169,6 +185,27 @@ class PriceService extends ChangeNotifier {
       }
     });
 
+    _socket!.on('kline:update', (data) {
+      if (data is Map<String, dynamic>) {
+        final key = _klineKey(
+          data['exchange'] as String? ?? '',
+          data['symbol'] as String? ?? '',
+          data['timeframe'] as String? ?? '',
+        );
+        final vela = Candle(
+          time: DateTime.fromMillisecondsSinceEpoch(
+            (data['timestamp'] as num?)?.toInt() ?? 0,
+          ),
+          open: (data['open'] as num?)?.toDouble() ?? 0,
+          high: (data['high'] as num?)?.toDouble() ?? 0,
+          low: (data['low'] as num?)?.toDouble() ?? 0,
+          close: (data['close'] as num?)?.toDouble() ?? 0,
+          volume: (data['volume'] as num?)?.toDouble() ?? 0,
+        );
+        _klineListeners[key]?.call(vela);
+      }
+    });
+
     _socket!.on('orderbook:unsupported', (data) {
       if (data is Map<String, dynamic>) {
         final ex = (data['exchange'] as String? ?? '').toLowerCase();
@@ -205,6 +242,8 @@ class PriceService extends ChangeNotifier {
     _subscribedSymbols.clear();
     _bookKeys.clear();
     _books.clear();
+    _klineKeys.clear();
+    _klineListeners.clear();
     notifyListeners();
   }
 
@@ -245,6 +284,41 @@ class PriceService extends ChangeNotifier {
       _socket?.emit('orderbook:unsubscribe', {
         'exchange': exchange.toLowerCase(),
         'symbol': symbol.toUpperCase(),
+      });
+    }
+  }
+
+  /// Pide las velas en vivo de un par en un intervalo. El callback recibe la
+  /// vela en curso cada vez que cambia.
+  void subscribeKlines(
+    String exchange,
+    String symbol,
+    String timeframe,
+    void Function(Candle) onCandle,
+  ) {
+    final key = _klineKey(exchange, symbol, timeframe);
+    _klineListeners[key] = onCandle;
+    if (!_klineKeys.add(key)) return;
+    if (_isConnected) {
+      _socket?.emit('kline:subscribe', {
+        'exchange': exchange.toLowerCase(),
+        'symbol': symbol.toUpperCase(),
+        'timeframe': timeframe.toLowerCase(),
+      });
+    } else {
+      connect();
+    }
+  }
+
+  void unsubscribeKlines(String exchange, String symbol, String timeframe) {
+    final key = _klineKey(exchange, symbol, timeframe);
+    _klineListeners.remove(key);
+    if (!_klineKeys.remove(key)) return;
+    if (_isConnected) {
+      _socket?.emit('kline:unsubscribe', {
+        'exchange': exchange.toLowerCase(),
+        'symbol': symbol.toUpperCase(),
+        'timeframe': timeframe.toLowerCase(),
       });
     }
   }
