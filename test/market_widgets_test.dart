@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:exchange_monitor/core/models/market.dart';
 import 'package:exchange_monitor/core/services/api_service.dart';
@@ -21,6 +22,10 @@ Future<void> montar(WidgetTester tester, Widget hijo) => tester.pumpWidget(
     );
 
 void main() {
+  // La app inicializa el locale al arrancar; en test hay que hacerlo a mano o
+  // cualquier fecha en español revienta.
+  setUpAll(() => initializeDateFormatting('es'));
+
   group('OrderBook · el modelo', () {
     test('lee niveles y descarta los de cantidad cero', () {
       final b = OrderBook.fromJson({
@@ -176,6 +181,43 @@ void main() {
       final o = OpenOrder.fromJson({'id': '3', 'symbol': 'X/Y', 'side': 'buy'});
       expect(o.progress, 0);
       expect(o.chartPrice, isNull);
+    });
+  });
+
+  group('CandlestickChart · tocar una vela', () {
+    final velas = [
+      vela(100, 120, 90, 110),
+      vela(110, 130, 105, 108),
+      vela(108, 115, 100, 102),
+    ];
+
+    testWidgets('mantener apretado muestra apertura, máximo, mínimo y cierre',
+        (tester) async {
+      await montar(tester, CandlestickChart(candles: velas));
+
+      final chart = find.byType(CandlestickChart);
+      final centro = tester.getCenter(chart);
+      final gesto = await tester.startGesture(centro);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+
+      // los cuatro rótulos de la lectura
+      expect(find.text('A '), findsOneWidget);
+      expect(find.text('M '), findsOneWidget);
+      expect(find.text('m '), findsOneWidget);
+      expect(find.text('C '), findsOneWidget);
+
+      await gesto.up();
+      await tester.pumpAndSettle();
+      expect(find.text('A '), findsNothing);
+    });
+
+    testWidgets('sin tocar nada la barra de lectura no ocupa lugar visible',
+        (tester) async {
+      await montar(tester, CandlestickChart(candles: velas));
+      expect(find.text('A '), findsNothing);
+      expect(find.textContaining('ver todo'), findsNothing);
+      expect(tester.takeException(), isNull);
     });
   });
 

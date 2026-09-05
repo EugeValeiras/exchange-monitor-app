@@ -61,6 +61,26 @@ class ChartViewport {
 
   ChartViewport reset() => ChartViewport(total: total);
 
+  /// Qué vela del TRAMO VISIBLE cae bajo un dedo, dado el x en píxeles.
+  ///
+  /// Devuelve el índice dentro de lo que se ve, no dentro de la lista entera:
+  /// es lo que necesita quien dibuja, que ya trabaja sobre el tramo.
+  int? candleAt(double x, double plotWidth) {
+    if (total == 0 || plotWidth <= 0) return null;
+    final n = count.round();
+    if (n <= 0) return null;
+    final slot = plotWidth / n;
+    final i = (x / slot).floor();
+    return i < 0 || i >= n ? null : i;
+  }
+
+  /// El centro horizontal de una vela del tramo visible.
+  double candleCenter(int index, double plotWidth) {
+    final n = count;
+    if (n <= 0) return 0;
+    return plotWidth / n * (index + 0.5);
+  }
+
   /// La misma ventana sobre una lista nueva.
   ///
   /// Al llegar una vela nueva el total crece: si estabas pegado al borde

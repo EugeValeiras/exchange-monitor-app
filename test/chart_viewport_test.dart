@@ -71,6 +71,38 @@ void main() {
       });
     });
 
+    group('qué vela toca el dedo', () {
+      const ancho = 300.0;
+
+      test('el primer píxel es la primera vela; el último, la última', () {
+        const v = ChartViewport(total: 100);
+        expect(v.candleAt(0, ancho), 0);
+        expect(v.candleAt(ancho - 0.01, ancho), 99);
+      });
+
+      test('con zoom el índice es del tramo visible, no de la lista entera', () {
+        final v = const ChartViewport(total: 100).zoom(2); // 50 velas desde la 25
+        expect(v.candleAt(0, ancho), 0);
+        expect(v.candleAt(ancho / 2, ancho), 25);
+        // y el tramo confirma a qué vela real corresponde
+        expect(v.slice(List.generate(100, (i) => i))[25], 50);
+      });
+
+      test('fuera del área no hay vela', () {
+        const v = ChartViewport(total: 100);
+        expect(v.candleAt(-5, ancho), isNull);
+        expect(v.candleAt(ancho + 5, ancho), isNull);
+        expect(v.candleAt(10, 0), isNull);
+      });
+
+      test('el centro de una vela cae en su franja', () {
+        const v = ChartViewport(total: 10);
+        final centro = v.candleCenter(3, ancho);
+        expect(centro, 105); // 300/10 * 3.5
+        expect(v.candleAt(centro, ancho), 3);
+      });
+    });
+
     test('reset vuelve a todas', () {
       final v = const ChartViewport(total: 100).zoom(4).pan(20).reset();
       expect(v.isZoomed, isFalse);

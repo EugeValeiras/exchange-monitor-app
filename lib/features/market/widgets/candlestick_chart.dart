@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/market.dart';
 import '../../../core/theme/em_tokens.dart';
+import '../../../core/utils/formatters.dart';
 import 'chart_viewport.dart';
 
 /// Velas japonesas.
@@ -40,6 +41,10 @@ class _CandlestickChartState extends State<CandlestickChart> {
   ChartViewport _view = const ChartViewport(total: 0);
   double _scaleAlEmpezar = 1;
 
+  /// La vela que estás tocando y a qué altura: el crosshair.
+  int? _cruzIndex;
+  double? _cruzY;
+
   /// Ancho que ocupa la escala de precios: no es zona de velas, y contarla
   /// hacía que el arrastre corriera de más.
   static const _axisWidth = 54.0;
@@ -77,8 +82,25 @@ class _CandlestickChartState extends State<CandlestickChart> {
       );
     }
 
-    return Stack(
+    final tocada = _cruzIndex != null && _cruzIndex! < _slice.length
+        ? _slice[_cruzIndex!]
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Una sola franja arriba del gráfico, fuera de las velas: cuando tocás
+        // muestra la vela, cuando hay zoom ofrece salir, y si no, nada. Antes
+        // el cartel flotaba encima de los datos y tapaba justo lo que mirabas.
+        SizedBox(
+          height: 18,
+          child: tocada != null
+              ? _lectura(tocada)
+              : _view.isZoomed
+                  ? _salidaDelZoom()
+                  : const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 2),
         GestureDetector(
           // Pellizcar y arrastrar sobre el mismo gesto: en un gráfico, alejar
           // y correrse son la misma intención de "mostrame otra ventana".
@@ -97,6 +119,15 @@ class _CandlestickChartState extends State<CandlestickChart> {
             });
           },
           onDoubleTap: _reset,
+          // Mantener apretado saca el crosshair; mover el dedo sin frenar
+          // arrastra el gráfico. Es la misma división que hace Binance: quien
+          // se queda quieto quiere leer, quien se mueve quiere navegar.
+          onLongPressStart: (d) => _cruz(d.localPosition),
+          onLongPressMoveUpdate: (d) => _cruz(d.localPosition),
+          onLongPressEnd: (_) => setState(() {
+            _cruzIndex = null;
+            _cruzY = null;
+          }),
           child: SizedBox(
             height: widget.height,
             width: double.infinity,
@@ -106,32 +137,85 @@ class _CandlestickChartState extends State<CandlestickChart> {
                 livePrice: widget.livePrice,
                 avgCost: widget.avgCost,
                 orders: widget.orders,
+                crosshairIndex: _cruzIndex,
+                crosshairY: _cruzY,
               ),
             ),
           ),
         ),
-        if (_view.isZoomed)
-          Positioned(
-            top: 0,
-            left: 0,
-            child: GestureDetector(
-              onTap: _reset,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: EmColors.surfaceTop,
-                  borderRadius: BorderRadius.circular(EmRadii.sm),
-                ),
-                child: Text(
-                  '${_slice.length} velas · tocá para ver todo',
-                  style: EmText.meta.copyWith(color: EmColors.textSecondary),
-                ),
-              ),
-            ),
-          ),
       ],
     );
+  }
+
+  void _cruz(Offset p) {
+    final ancho = (context.size?.width ?? _axisWidth * 2) - _axisWidth;
+    setState(() {
+      _cruzIndex = _view.candleAt(p.dx, ancho);
+      _cruzY = p.dy;
+    });
+  }
+
+  /// Lo que dice una vela: apertura, máximo, mínimo y cierre.
+  Widget _lectura(Candle c) {
+    final sube = c.isUp;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          Text(
+            formatDayShort(c.time),
+            style: EmText.section.copyWith(color: EmColors.textTertiary),
+          ),
+          const SizedBox(width: EmSpace.sm),
+          for (final par in [
+            ('A', c.open),
+            ('M', c.high),
+            ('m', c.low),
+            ('C', c.close),
+          ]) ...[
+            Text('${par.$1} ',
+                style: EmText.section.copyWith(color: EmColors.textMuted)),
+            Text(
+              _corto(par.$2),
+              style: EmText.meta.copyWith(
+                color: sube ? EmColors.up : EmColors.down,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: EmSpace.sm),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _salidaDelZoom() => GestureDetector(
+        onTap: _reset,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${_slice.length} velas',
+              style: EmText.section.copyWith(color: EmColors.textTertiary),
+            ),
+            const SizedBox(width: EmSpace.xs),
+            Text(
+              '· ver todo',
+              style: EmText.section.copyWith(color: EmColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+
+  String _corto(double v) {
+    final a = v.abs();
+    if (a >= 1000) {
+      return v
+          .toStringAsFixed(0)
+          .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+    }
+    return v.toStringAsFixed(a >= 1 ? 2 : 6).replaceAll('.', ',');
   }
 }
 
@@ -140,6 +224,8 @@ class _CandlePainter extends CustomPainter {
   final double? livePrice;
   final double? avgCost;
   final List<OpenOrder> orders;
+  final int? crosshairIndex;
+  final double? crosshairY;
 
   /// Franja inferior para el volumen, como fracción del alto.
   static const _volumeShare = 0.18;
@@ -153,6 +239,8 @@ class _CandlePainter extends CustomPainter {
     this.livePrice,
     this.avgCost,
     this.orders = const [],
+    this.crosshairIndex,
+    this.crosshairY,
   });
 
   @override
@@ -266,6 +354,50 @@ class _CandlePainter extends CustomPainter {
       }
       canvas.drawPath(path..close(), Paint()..color = color);
     }
+
+    // ── crosshair ───────────────────────────────────────────────────────────
+    // Vertical sobre la vela que tocás; horizontal a la altura del dedo, con
+    // el precio de ESA altura en la escala: leer un nivel cualquiera del
+    // gráfico es la mitad de para qué sirve tocar.
+    final ci = crosshairIndex;
+    if (ci != null && ci >= 0 && ci < candles.length) {
+      final cx = slot * (ci + 0.5);
+      final cruz = Paint()
+        ..color = EmColors.textSecondary
+        ..strokeWidth = 1;
+
+      for (var y = 0.0; y < priceHeight; y += 6) {
+        canvas.drawLine(Offset(cx, y), Offset(cx, y + 3), cruz);
+      }
+
+      final cy = crosshairY;
+      if (cy != null && cy >= 0 && cy <= priceHeight) {
+        for (var x = 0.0; x < plotWidth; x += 6) {
+          canvas.drawLine(Offset(x, cy), Offset(x + 3, cy), cruz);
+        }
+        // El precio a esa altura, sobre fondo opaco para que no se pierda
+        // entre las etiquetas de la escala.
+        final precio = hi - (cy / priceHeight) * (hi - lo);
+        final tp = TextPainter(
+          text: TextSpan(
+            text: _money(precio),
+            style: const TextStyle(
+              color: EmColors.bg,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final r = Rect.fromLTWH(plotWidth + 3, cy - 7, tp.width + 6, 14);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(r, const Radius.circular(3)),
+          Paint()..color = EmColors.textSecondary,
+        );
+        tp.paint(canvas, Offset(plotWidth + 6, cy - tp.height / 2));
+      }
+    }
   }
 
   void _dashed(Canvas canvas, double y, double width, Color color) {
@@ -309,5 +441,7 @@ class _CandlePainter extends CustomPainter {
       old.candles != candles ||
       old.livePrice != livePrice ||
       old.avgCost != avgCost ||
-      old.orders != orders;
+      old.orders != orders ||
+      old.crosshairIndex != crosshairIndex ||
+      old.crosshairY != crosshairY;
 }
